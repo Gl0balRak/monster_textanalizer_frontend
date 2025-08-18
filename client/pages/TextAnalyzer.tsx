@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Input, Select, Checkbox } from '@/components/forms';
 import { Button } from '@/components/buttons';
 import { AddQuerySection } from '@/components/ui/AddQuerySection';
+import { ProgressBar } from '@/components/progress_bars/ProgressBar';
 import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
 
 const TextAnalyzerPage: React.FC = () => {
   // Используем наш custom hook
   const {
     isLoading,
+    progress,
     results,
     error,
     startAnalysis,
@@ -209,7 +211,7 @@ const TextAnalyzerPage: React.FC = () => {
               disabled={!pageUrl || !mainQuery || isLoading}
               onClick={handleGetTop}
             >
-              {isLoading ? 'Обработка...' : 'Получить ТОП'}
+              {isLoading ? 'Обработка...' : '��олучить ТОП'}
             </Button>
 
             {isLoading && (
@@ -217,17 +219,30 @@ const TextAnalyzerPage: React.FC = () => {
                 Анализ может занять несколько минут...
               </span>
             )}
-
-            {results && (
-              <Button
-                variant="outline"
-                size="medium"
-                onClick={resetResults}
-              >
-                Очистить результаты
-              </Button>
-            )}
           </div>
+
+          {/* Progress Bar */}
+          {isLoading && (
+            <div className="space-y-2">
+              <ProgressBar
+                progress={progress}
+                label="Прогресс анализа"
+                color="red"
+                showPercentage={true}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {results && (
+            <Button
+              variant="outline"
+              size="medium"
+              onClick={resetResults}
+            >
+              Очистить результаты
+            </Button>
+          )}
 
           {/* Results section */}
           {results && !isLoading && (
