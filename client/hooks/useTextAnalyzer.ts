@@ -1,7 +1,7 @@
 // hooks/useTextAnalyzer.ts
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { API_ENDPOINTS } from '@/config/api.config.js';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { API_ENDPOINTS } from "@/config/api.config.js";
 // import { useToast } from '@/hooks/use-toast';
 
 interface TextAnalyzerFormData {
@@ -50,7 +50,8 @@ export const useTextAnalyzer = () => {
   // Функция валидации данных
   const validateFormData = (pageUrl: string, mainQuery: string): boolean => {
     if (!pageUrl || !mainQuery) {
-      const errorMessage = 'Заполните обязательные поля: адрес страницы и основной запрос';
+      const errorMessage =
+        "Заполните обязательные поля: адрес страницы и основной запрос";
       setError(errorMessage);
 
       // Если есть toast, используем его, иначе alert
@@ -81,24 +82,24 @@ export const useTextAnalyzer = () => {
       excludePlatforms: boolean;
       parseArchived: boolean;
       calculateByMedian: boolean;
-    }
+    },
   ): TextAnalyzerFormData => {
     return {
       url: pageUrl,
       main_query: mainQuery,
-      additional_queries: additionalQueries.filter(q => q && q.trim() !== ''),
-      excluded_words: excludedWords.filter(w => w && w.trim() !== ''),
+      additional_queries: additionalQueries.filter((q) => q && q.trim() !== ""),
+      excluded_words: excludedWords.filter((w) => w && w.trim() !== ""),
       settings: {
         check_ai: settings.checkAI,
         check_spelling: settings.checkSpelling,
         check_uniqueness: settings.checkUniqueness,
-        search_engine: settings.searchEngine || 'yandex',
-        region: settings.region || 'msk',
+        search_engine: settings.searchEngine || "yandex",
+        region: settings.region || "msk",
         top_size: parseInt(settings.topSize) || 10,
         exclude_platforms: settings.excludePlatforms,
         parse_archived: settings.parseArchived,
         calculate_by_median: settings.calculateByMedian,
-      }
+      },
     };
   };
 
@@ -111,157 +112,169 @@ export const useTextAnalyzer = () => {
   }, []);
 
   // Start polling progress
-  const startPolling = useCallback((taskId: string) => {
-    if (pollingRef.current) return; // Already polling
+  const startPolling = useCallback(
+    (taskId: string) => {
+      if (pollingRef.current) return; // Already polling
 
-    pollingRef.current = setInterval(async () => {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const response = await fetch(
+            API_ENDPOINTS.analyzer.analyzeATagsProgress,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                // Add auth headers if needed
+              },
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const progressData: ProgressStatus = await response.json();
+
+          if (!mountedRef.current) return;
+
+          setProgress(progressData.progress);
+          setIsLoading(progressData.running);
+
+          console.log("Progress update:", progressData);
+
+          // If task completed, get results and stop polling
+          if (!progressData.running && progressData.progress === 100) {
+            console.log("Analysis completed!");
+            console.log("Final results for task:", taskId);
+
+            // Здесь в будущем будет запрос для получения итоговых результатов
+            // А пока выводим в консоль данные из прогресса и результатов
+            console.log("=== РЕЗУЛЬТАТЫ АНАЛИЗА ===");
+            console.log("Task ID:", taskId);
+            console.log("Progress data:", progressData);
+
+            // Если есть результаты в состоянии, выводим их тоже
+            if (results) {
+              console.log("Stored results:", results);
+              console.log("Analysis data:", results.data);
+            }
+
+            stopPolling();
+            setIsLoading(false);
+          }
+        } catch (err) {
+          console.error("Error polling progress:", err);
+          if (mountedRef.current) {
+            setError("Ошибка при получении статуса анализа");
+            setIsLoading(false);
+          }
+          stopPolling();
+        }
+      }, 2000); // Poll every 2 seconds
+    },
+    [stopPolling],
+  );
+
+  // Основная функция анализа
+  const startAnalysis = useCallback(
+    async (
+      pageUrl: string,
+      mainQuery: string,
+      additionalQueries: string[],
+      excludedWords: string[],
+      settings: {
+        checkAI: boolean;
+        checkSpelling: boolean;
+        checkUniqueness: boolean;
+        searchEngine: string;
+        region: string;
+        topSize: string;
+        excludePlatforms: boolean;
+        parseArchived: boolean;
+        calculateByMedian: boolean;
+      },
+    ) => {
+      // Валидация
+      if (!validateFormData(pageUrl, mainQuery)) {
+        return null;
+      }
+
+      setIsLoading(true);
+      setProgress(0);
+      setError(null);
+      setResults(null);
+
       try {
-        const response = await fetch(API_ENDPOINTS.analyzer.analyzeATagsProgress, {
-          method: 'GET',
+        // Подготавливаем данные
+        const requestData = prepareRequestData(
+          pageUrl,
+          mainQuery,
+          additionalQueries,
+          excludedWords,
+          settings,
+        );
+
+        console.log(
+          "Отправка данных на анализ:",
+          JSON.stringify(requestData, null, 2),
+        );
+
+        // === РЕАЛЬНЫЙ API ВЫЗОВ к API_ENDPOINTS.analyzer.start ===
+        const response = await fetch(API_ENDPOINTS.analyzer.start, {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             // Add auth headers if needed
           },
+          body: JSON.stringify(requestData),
         });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const progressData: ProgressStatus = await response.json();
+        const responseData = await response.json();
+        console.log("Ответ сервера от /start:", responseData);
 
-        if (!mountedRef.current) return;
+        const analysisResult: AnalysisResult = {
+          success: true,
+          message: responseData.message || "Анализ запущен",
+          task_id: responseData.task_id || "task_" + Date.now(),
+          data: responseData.data || responseData,
+        };
 
-        setProgress(progressData.progress);
-        setIsLoading(progressData.running);
+        setResults(analysisResult);
+        taskIdRef.current = analysisResult.task_id;
 
-        console.log('Progress update:', progressData);
+        // Запускаем поллинг пр��гресса
+        startPolling(analysisResult.task_id);
 
-        // If task completed, get results and stop polling
-        if (!progressData.running && progressData.progress === 100) {
-          console.log('Analysis completed!');
-          console.log('Final results for task:', taskId);
+        // Уведомление об успехе
+        alert(`Анализ начат! ID задачи: ${analysisResult.task_id}`);
 
-          // Здесь в будущем будет запрос для получения итоговых результатов
-          // А пока выводим в консоль данные из прогресса и результатов
-          console.log('=== РЕЗУЛЬТАТЫ АНАЛИЗА ===');
-          console.log('Task ID:', taskId);
-          console.log('Progress data:', progressData);
+        return analysisResult;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Произошла ошибка при отправке запроса";
 
-          // Если есть результаты в состоянии, выводим их тоже
-          if (results) {
-            console.log('Stored results:', results);
-            console.log('Analysis data:', results.data);
-          }
+        console.error("Ошибка при отправке:", error);
+        setError(errorMessage);
+        alert(errorMessage);
 
-          stopPolling();
-          setIsLoading(false);
-        }
-      } catch (err) {
-        console.error('Error polling progress:', err);
-        if (mountedRef.current) {
-          setError('Ошибка при получении статуса анализа');
-          setIsLoading(false);
-        }
-        stopPolling();
+        return null;
       }
-    }, 2000); // Poll every 2 seconds
-  }, [stopPolling]);
-
-  // Основная функция анализа
-  const startAnalysis = useCallback(async (
-    pageUrl: string,
-    mainQuery: string,
-    additionalQueries: string[],
-    excludedWords: string[],
-    settings: {
-      checkAI: boolean;
-      checkSpelling: boolean;
-      checkUniqueness: boolean;
-      searchEngine: string;
-      region: string;
-      topSize: string;
-      excludePlatforms: boolean;
-      parseArchived: boolean;
-      calculateByMedian: boolean;
-    }
-  ) => {
-    // Валидация
-    if (!validateFormData(pageUrl, mainQuery)) {
-      return null;
-    }
-
-    setIsLoading(true);
-    setProgress(0);
-    setError(null);
-    setResults(null);
-
-    try {
-      // Подготавливаем данные
-      const requestData = prepareRequestData(
-        pageUrl,
-        mainQuery,
-        additionalQueries,
-        excludedWords,
-        settings
-      );
-
-      console.log('Отправка данных на анализ:', JSON.stringify(requestData, null, 2));
-
-      // === РЕАЛЬНЫЙ API ВЫЗОВ к API_ENDPOINTS.analyzer.start ===
-      const response = await fetch(API_ENDPOINTS.analyzer.start, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth headers if needed
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const responseData = await response.json();
-      console.log('Ответ сервера от /start:', responseData);
-
-      const analysisResult: AnalysisResult = {
-        success: true,
-        message: responseData.message || 'Анализ запущен',
-        task_id: responseData.task_id || 'task_' + Date.now(),
-        data: responseData.data || responseData
-      };
-
-      setResults(analysisResult);
-      taskIdRef.current = analysisResult.task_id;
-
-      // Запускаем поллинг пр��гресса
-      startPolling(analysisResult.task_id);
-
-      // Уведомление об успехе
-      alert(`Анализ начат! ID задачи: ${analysisResult.task_id}`);
-
-      return analysisResult;
-
-    } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Произошла ошибка при отправке запроса';
-
-      console.error('Ошибка при отправке:', error);
-      setError(errorMessage);
-      alert(errorMessage);
-
-      return null;
-    }
-  }, [startPolling]);
+    },
+    [startPolling],
+  );
 
   // Функция загрузки файла со стоп-словами
   const loadStopWordsFromFile = useCallback((): Promise<string[]> => {
     return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.txt,.csv';
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".txt,.csv";
 
       input.onchange = (e: Event) => {
         const target = e.target as HTMLInputElement;
@@ -274,8 +287,8 @@ export const useTextAnalyzer = () => {
             const text = e.target?.result as string;
             const words = text
               .split(/[\n,;]+/)
-              .map(w => w.trim())
-              .filter(w => w.length > 0);
+              .map((w) => w.trim())
+              .filter((w) => w.length > 0);
 
             console.log(`Загружено стоп-слов: ${words.length}`);
 
@@ -288,7 +301,7 @@ export const useTextAnalyzer = () => {
           };
 
           reader.onerror = () => {
-            console.error('Ошибка чтения файла');
+            console.error("Ошибка чтения файла");
             // toast?.({
             //   title: "Ошибка",
             //   description: "Не удалось прочитать файл",
@@ -331,11 +344,11 @@ export const useTextAnalyzer = () => {
       // Заглушка
       return {
         task_id: taskId,
-        status: 'processing',
+        status: "processing",
         progress: 45,
       };
     } catch (error) {
-      console.error('Ошибка получения статуса:', error);
+      console.error("Ошибка получения статуса:", error);
       return null;
     }
   }, []);
