@@ -4,29 +4,33 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { API_ENDPOINTS } from "@/config/api.config.js";
 // import { useToast } from '@/hooks/use-toast';
 
-interface TextAnalyzerFormData {
-  url: string;
+interface AnalysisRequest {
+  check_ai: boolean;
+  check_spelling: boolean;
+  check_uniqueness: boolean;
+  page_url: string | null;
   main_query: string;
   additional_queries: string[];
+  parse_saved_copies: boolean;
+  search_engine: "yandex" | "google";
+  region: string;
+  top_size: number;
   excluded_words: string[];
-  settings: {
-    check_ai: boolean;
-    check_spelling: boolean;
-    check_uniqueness: boolean;
-    search_engine: string;
-    region: string;
-    top_size: number;
-    exclude_platforms: boolean;
-    parse_archived: boolean;
-    calculate_by_median: boolean;
-  };
+  auto_update: boolean;
+  update_interval_sec: number;
+  median_mode: boolean;
 }
 
 interface AnalysisResult {
-  success: boolean;
-  message: string;
   task_id: string;
-  data: any;
+  my_page: any;
+  competitors: any[];
+  analysis_data: {
+    main_query: string;
+    additional_queries: string[];
+  };
+  summary?: any;
+  error?: string;
 }
 
 interface ProgressStatus {
@@ -43,7 +47,7 @@ export const useTextAnalyzer = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Refs for polling
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<EventSource | NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const taskIdRef = useRef<string | null>(null);
 
@@ -83,96 +87,123 @@ export const useTextAnalyzer = () => {
       parseArchived: boolean;
       calculateByMedian: boolean;
     },
-  ): TextAnalyzerFormData => {
+  ): AnalysisRequest => {
     return {
-      url: pageUrl,
+      check_ai: settings.checkAI,
+      check_spelling: settings.checkSpelling,
+      check_uniqueness: settings.checkUniqueness,
+      page_url: pageUrl || null,
       main_query: mainQuery,
       additional_queries: additionalQueries.filter((q) => q && q.trim() !== ""),
+      parse_saved_copies: settings.parseArchived,
+      search_engine: (settings.searchEngine || "yandex") as "yandex" | "google",
+      region: settings.region || "213", // Москва по умолчанию
+      top_size: parseInt(settings.topSize) || 10,
       excluded_words: excludedWords.filter((w) => w && w.trim() !== ""),
-      settings: {
-        check_ai: settings.checkAI,
-        check_spelling: settings.checkSpelling,
-        check_uniqueness: settings.checkUniqueness,
-        search_engine: settings.searchEngine || "yandex",
-        region: settings.region || "msk",
-        top_size: parseInt(settings.topSize) || 10,
-        exclude_platforms: settings.excludePlatforms,
-        parse_archived: settings.parseArchived,
-        calculate_by_median: settings.calculateByMedian,
-      },
+      auto_update: false,
+      update_interval_sec: 60,
+      median_mode: settings.calculateByMedian,
     };
   };
 
   // Stop polling
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+      if (pollingRef.current instanceof EventSource) {
+        pollingRef.current.close();
+      } else {
+        clearInterval(pollingRef.current);
+      }
       pollingRef.current = null;
     }
   }, []);
 
-  // Start polling progress
+  // Start polling progress using SSE
   const startPolling = useCallback(
     (taskId: string) => {
       if (pollingRef.current) return; // Already polling
 
-      pollingRef.current = setInterval(async () => {
-        try {
-          const response = await fetch(
-            API_ENDPOINTS.analyzer.analyzeATagsProgress,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                // Add auth headers if needed
-              },
-            },
-          );
+      console.log("Starting SSE polling for task:", taskId);
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+      try {
+        const eventSource = new EventSource(
+          `${API_ENDPOINTS.analyzer.analyzeATagsProgress}?task_id=${taskId}`
+        );
 
-          const progressData: ProgressStatus = await response.json();
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("SSE Progress update:", data);
 
-          if (!mountedRef.current) return;
-
-          setProgress(progressData.progress);
-          setIsLoading(progressData.running);
-
-          console.log("Progress update:", progressData);
-
-          // If task completed, get results and stop polling
-          if (!progressData.running && progressData.progress === 100) {
-            console.log("Analysis completed!");
-            console.log("Final results for task:", taskId);
-
-            // Здесь в будущем будет запрос для получения итоговых результатов
-            // А пока выводим в консоль данные из прогресса и результатов
-            console.log("=== РЕЗУЛЬТАТЫ АНАЛИЗА ===");
-            console.log("Task ID:", taskId);
-            console.log("Progress data:", progressData);
-
-            // Если есть результаты в состоянии, выводим их тоже
-            if (results) {
-              console.log("Stored results:", results);
-              console.log("Analysis data:", results.data);
+            if (!mountedRef.current) {
+              eventSource.close();
+              return;
             }
 
-            stopPolling();
-            setIsLoading(false);
+            // Handle different message types
+            switch (data.type) {
+              case 'stage_start':
+                console.log(`Starting stage: ${data.stage}`);
+                break;
+              case 'stage_complete':
+                console.log(`Completed stage: ${data.stage}`);
+                break;
+              case 'parsing_complete':
+                console.log('Parsing completed:', data);
+                setProgress(100);
+                break;
+              case 'complete':
+                console.log("Analysis completed!");
+                setProgress(100);
+                setIsLoading(false);
+                eventSource.close();
+                
+                // Выводим финальные результаты в консоль
+                console.log("=== РЕЗУЛЬТАТЫ АНАЛИЗА ===");
+                console.log("Task ID:", taskId);
+                if (results) {
+                  console.log("Final results:", results);
+                }
+                break;
+              case 'error':
+                console.error('Analysis error:', data.message);
+                setError(data.message);
+                setIsLoading(false);
+                eventSource.close();
+                break;
+              case 'heartbeat':
+                // Keep connection alive
+                break;
+              default:
+                // Update progress if available
+                if (data.progress_percent !== undefined) {
+                  setProgress(data.progress_percent);
+                }
+                break;
+            }
+          } catch (parseError) {
+            console.error('Error parsing SSE data:', parseError);
           }
-        } catch (err) {
-          console.error("Error polling progress:", err);
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('SSE Error:', error);
           if (mountedRef.current) {
-            setError("Ошибка при получении статуса анализа");
+            setError("Ошибка соединения с сервером прогресса");
             setIsLoading(false);
           }
-          stopPolling();
-        }
-      }, 2000); // Poll every 2 seconds
+          eventSource.close();
+        };
+
+        // Store reference for cleanup
+        pollingRef.current = eventSource;
+      } catch (error) {
+        console.error('Error starting SSE:', error);
+        setError("Ошибка при подключении к серверу прогресса");
+        setIsLoading(false);
+      }
     },
-    [stopPolling],
+    [stopPolling, results, mountedRef]
   );
 
   // Основная функция анализа
@@ -235,24 +266,20 @@ export const useTextAnalyzer = () => {
 
         const responseData = await response.json();
         console.log("Ответ сервера от /start:", responseData);
+        console.log("=== ДАННЫЕ ДЛЯ ТАБЛИЦЫ ===");
+        console.log(JSON.stringify(responseData, null, 2));
 
-        const analysisResult: AnalysisResult = {
-          success: true,
-          message: responseData.message || "Анализ запущен",
-          task_id: responseData.task_id || "task_" + Date.now(),
-          data: responseData.data || responseData,
-        };
+        // Сохраняем результаты
+        setResults(responseData);
+        taskIdRef.current = responseData.task_id;
 
-        setResults(analysisResult);
-        taskIdRef.current = analysisResult.task_id;
-
-        // Запускаем поллинг пр��гресса
-        startPolling(analysisResult.task_id);
+        // Запускаем поллинг прогресса
+        startPolling(responseData.task_id);
 
         // Уведомление об успехе
-        alert(`Анализ начат! ID задачи: ${analysisResult.task_id}`);
+        alert(`Анализ начат! ID задачи: ${responseData.task_id}`);
 
-        return analysisResult;
+        return responseData;
       } catch (error) {
         const errorMessage =
           error instanceof Error
@@ -262,6 +289,7 @@ export const useTextAnalyzer = () => {
         console.error("Ошибка при отправке:", error);
         setError(errorMessage);
         alert(errorMessage);
+        setIsLoading(false);
 
         return null;
       }
