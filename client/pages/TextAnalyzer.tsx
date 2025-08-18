@@ -247,7 +247,7 @@ const TextAnalyzerPage: React.FC = () => {
             <div className="mt-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-bold text-green-900 mb-2">
-                  ✓ {results.message}
+                  ✓ Анализ завершен
                 </h3>
                 <p className="text-green-700">
                   ID задачи:{" "}
@@ -257,25 +257,45 @@ const TextAnalyzerPage: React.FC = () => {
                 </p>
               </div>
 
-              {results.data && (
+              {results.summary && (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold mb-2">Детали задачи:</h4>
+                  <h4 className="font-semibold mb-2">Статистика анализа:</h4>
                   <dl className="grid grid-cols-2 gap-2 text-sm">
-                    <dt className="text-gray-600">URL:</dt>
-                    <dd className="font-mono">{results.data.url}</dd>
-                    <dt className="text-gray-600">Запрос:</dt>
-                    <dd>{results.data.query}</dd>
-                    <dt className="text-gray-600">Статус:</dt>
-                    <dd className="capitalize">{results.data.status}</dd>
-                    {results.data.estimated_time && (
+                    <dt className="text-gray-600">Моя страница:</dt>
+                    <dd>{results.summary.my_page_success ? "✓ Проанализирована" : "✗ Ошибка"}</dd>
+                    <dt className="text-gray-600">Конкуренты найдены:</dt>
+                    <dd>{results.summary.competitors_found}</dd>
+                    <dt className="text-gray-600">Конкуренты успешно:</dt>
+                    <dd>{results.summary.competitors_successful}</dd>
+                    <dt className="text-gray-600">Всего страниц:</dt>
+                    <dd>{results.summary.total_pages_analyzed}</dd>
+                  </dl>
+                </div>
+              )}
+
+              {results.analysis_data && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2">Параметры анализа:</h4>
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <dt className="text-gray-600">Основной запрос:</dt>
+                    <dd>{results.analysis_data.main_query}</dd>
+                    {results.analysis_data.additional_queries.length > 0 && (
                       <>
-                        <dt className="text-gray-600">Время:</dt>
-                        <dd>{results.data.estimated_time}</dd>
+                        <dt className="text-gray-600">Дополнительные:</dt>
+                        <dd>{results.analysis_data.additional_queries.join(", ")}</dd>
                       </>
                     )}
                   </dl>
                 </div>
               )}
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2">📊 Результаты таблицы</h4>
+                <p className="text-yellow-700 text-sm">
+                  Данные для формирования таблицы выведены в консоль браузера.
+                  Откройте DevTools (F12) → Console для просмотра.
+                </p>
+              </div>
             </div>
           )}
         </div>
