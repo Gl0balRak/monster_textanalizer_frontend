@@ -1,33 +1,35 @@
-import React, { useState } from 'react';
-import { Input, Select, Checkbox } from '@/components/forms';
-import { Button } from '@/components/buttons';
-import { AddQuerySection } from '@/components/ui/AddQuerySection';
-import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
+import React, { useState } from "react";
+import { Input, Select, Checkbox } from "@/components/forms";
+import { Button } from "@/components/buttons";
+import { AddQuerySection } from "@/components/ui/AddQuerySection";
+import { ProgressBar } from "@/components/progress_bars/ProgressBar";
+import { useTextAnalyzer } from "@/hooks/useTextAnalyzer";
 
 const TextAnalyzerPage: React.FC = () => {
   // Используем наш custom hook
   const {
     isLoading,
+    progress,
     results,
     error,
     startAnalysis,
     loadStopWordsFromFile,
-    resetResults
+    resetResults,
   } = useTextAnalyzer();
 
   // Состояния формы
   const [checkAI, setCheckAI] = useState(false);
   const [checkSpelling, setCheckSpelling] = useState(false);
   const [checkUniqueness, setCheckUniqueness] = useState(false);
-  const [pageUrl, setPageUrl] = useState('');
-  const [mainQuery, setMainQuery] = useState('');
+  const [pageUrl, setPageUrl] = useState("");
+  const [mainQuery, setMainQuery] = useState("");
   const [additionalQueries, setAdditionalQueries] = useState<string[]>([]);
   const [excludedWords, setExcludedWords] = useState<string[]>([]);
   const [excludePlatforms, setExcludePlatforms] = useState(false);
   const [parseArchived, setParseArchived] = useState(false);
-  const [searchEngine, setSearchEngine] = useState('');
-  const [region, setRegion] = useState('');
-  const [topSize, setTopSize] = useState('');
+  const [searchEngine, setSearchEngine] = useState("");
+  const [region, setRegion] = useState("");
+  const [topSize, setTopSize] = useState("");
   const [calculateByMedian, setCalculateByMedian] = useState(false);
 
   // Обработчик отправки формы
@@ -47,13 +49,13 @@ const TextAnalyzerPage: React.FC = () => {
         excludePlatforms,
         parseArchived,
         calculateByMedian,
-      }
+      },
     );
 
     // Можно добавить дополнительную логику после получения результата
     if (result && result.success) {
       // Например, очистить форму или перенаправить пользователя
-      console.log('Анализ успешно запущен');
+      console.log("Анализ успешно запущен");
     }
   };
 
@@ -72,7 +74,9 @@ const TextAnalyzerPage: React.FC = () => {
           {/* Заголовок страницы */}
           <div className="border-b pb-4">
             <h1 className="text-2xl font-bold text-gray-900">Анализ текста</h1>
-            <p className="text-gray-600 mt-1">Проверка страницы и получение ТОП результатов</p>
+            <p className="text-gray-600 mt-1">
+              Проверка страницы и получение ТОП результатов
+            </p>
           </div>
 
           {/* Показываем ошибку если есть */}
@@ -136,8 +140,8 @@ const TextAnalyzerPage: React.FC = () => {
               value={searchEngine}
               onChange={setSearchEngine}
               options={[
-                { value: 'google', label: 'Google' },
-                { value: 'yandex', label: 'Яндекс' },
+                { value: "google", label: "Google" },
+                { value: "yandex", label: "Яндекс" },
               ]}
             />
             <Select
@@ -146,9 +150,9 @@ const TextAnalyzerPage: React.FC = () => {
               value={region}
               onChange={setRegion}
               options={[
-                { value: 'msk', label: 'Москва' },
-                { value: 'spb', label: 'Санкт-Петербург' },
-                { value: 'ekb', label: 'Екатеринбург' },
+                { value: "msk", label: "Москва" },
+                { value: "spb", label: "Санкт-Петербург" },
+                { value: "ekb", label: "Екатеринбург" },
               ]}
               allowCustomValue={true}
             />
@@ -158,9 +162,9 @@ const TextAnalyzerPage: React.FC = () => {
               value={topSize}
               onChange={setTopSize}
               options={[
-                { value: '10', label: 'ТОП-10' },
-                { value: '20', label: 'ТОП-20' },
-                { value: '50', label: 'ТОП-50' },
+                { value: "10", label: "ТОП-10" },
+                { value: "20", label: "ТОП-20" },
+                { value: "50", label: "ТОП-50" },
               ]}
             />
           </div>
@@ -209,7 +213,7 @@ const TextAnalyzerPage: React.FC = () => {
               disabled={!pageUrl || !mainQuery || isLoading}
               onClick={handleGetTop}
             >
-              {isLoading ? 'Обработка...' : 'Получить ТОП'}
+              {isLoading ? "Обработка..." : "��олучить ТОП"}
             </Button>
 
             {isLoading && (
@@ -217,17 +221,26 @@ const TextAnalyzerPage: React.FC = () => {
                 Анализ может занять несколько минут...
               </span>
             )}
-
-            {results && (
-              <Button
-                variant="outline"
-                size="medium"
-                onClick={resetResults}
-              >
-                Очистить результаты
-              </Button>
-            )}
           </div>
+
+          {/* Progress Bar */}
+          {isLoading && (
+            <div className="space-y-2">
+              <ProgressBar
+                progress={progress}
+                label="Прогресс анализа"
+                color="red"
+                showPercentage={true}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {results && (
+            <Button variant="outline" size="medium" onClick={resetResults}>
+              Очистить результаты
+            </Button>
+          )}
 
           {/* Results section */}
           {results && !isLoading && (
@@ -237,7 +250,8 @@ const TextAnalyzerPage: React.FC = () => {
                   ✓ {results.message}
                 </h3>
                 <p className="text-green-700">
-                  ID задачи: <code className="bg-green-100 px-2 py-1 rounded">
+                  ID задачи:{" "}
+                  <code className="bg-green-100 px-2 py-1 rounded">
                     {results.task_id}
                   </code>
                 </p>
