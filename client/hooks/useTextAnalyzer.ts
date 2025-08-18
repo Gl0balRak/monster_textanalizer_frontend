@@ -141,6 +141,19 @@ export const useTextAnalyzer = () => {
         if (!progressData.running && progressData.progress === 100) {
           console.log('Analysis completed!');
           console.log('Final results for task:', taskId);
+
+          // Здесь в будущем будет запрос для получения итоговых результатов
+          // А пока выводим в консоль данные из прогресса и результатов
+          console.log('=== РЕЗУЛЬТАТЫ АНАЛИЗА ===');
+          console.log('Task ID:', taskId);
+          console.log('Progress data:', progressData);
+
+          // Если есть результаты в состоянии, выводим их тоже
+          if (results) {
+            console.log('Stored results:', results);
+            console.log('Analysis data:', results.data);
+          }
+
           stopPolling();
           setIsLoading(false);
         }
@@ -222,7 +235,7 @@ export const useTextAnalyzer = () => {
       setResults(analysisResult);
       taskIdRef.current = analysisResult.task_id;
 
-      // Запускаем поллинг прогресса
+      // Запускаем поллинг пр��гресса
       startPolling(analysisResult.task_id);
 
       // Уведомление об успехе
