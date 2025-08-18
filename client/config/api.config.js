@@ -18,7 +18,7 @@ export const API_ENDPOINTS = {
   analyzer: {
     base: `${ANALYZER_API_URL}/analyzer`,
     // Основной endpoint для запуска анализа
-    start: `${ANALYZER_API_URL}/start`,  // <-- ИСПРАВЛЕНО! Без /analyzer
+    start: `${ANALYZER_API_URL}/analyzer/start`,
     // Текстовый анализ
     analyzeATags: `${ANALYZER_API_URL}/analyzer/analyze-a-tags`,
     analyzeATagsProgress: `${ANALYZER_API_URL}/analyzer/analyze-a-tags-progress`,
