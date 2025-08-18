@@ -1,7 +1,7 @@
 // hooks/useTextAnalyzer.ts
 
-import { useState, useCallback } from 'react';
-import analyzerService from '@/services/analyzer.service';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { API_ENDPOINTS } from '@/config/api.config.js';
 // import { useToast } from '@/hooks/use-toast';
 
 interface TextAnalyzerFormData {
@@ -29,11 +29,23 @@ interface AnalysisResult {
   data: any;
 }
 
+interface ProgressStatus {
+  progress: number;
+  status: string;
+  running: boolean;
+}
+
 export const useTextAnalyzer = () => {
   // const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Refs for polling
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+  const taskIdRef = useRef<string | null>(null);
 
   // Функция валидации данных
   const validateFormData = (pageUrl: string, mainQuery: string): boolean => {
@@ -90,6 +102,59 @@ export const useTextAnalyzer = () => {
     };
   };
 
+  // Stop polling
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  // Start polling progress
+  const startPolling = useCallback((taskId: string) => {
+    if (pollingRef.current) return; // Already polling
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.analyzer.analyzeATagsProgress, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Add auth headers if needed
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const progressData: ProgressStatus = await response.json();
+
+        if (!mountedRef.current) return;
+
+        setProgress(progressData.progress);
+        setIsLoading(progressData.running);
+
+        console.log('Progress update:', progressData);
+
+        // If task completed, get results and stop polling
+        if (!progressData.running && progressData.progress === 100) {
+          console.log('Analysis completed!');
+          console.log('Final results for task:', taskId);
+          stopPolling();
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Error polling progress:', err);
+        if (mountedRef.current) {
+          setError('Ошибка при получении статуса анализа');
+          setIsLoading(false);
+        }
+        stopPolling();
+      }
+    }, 2000); // Poll every 2 seconds
+  }, [stopPolling]);
+
   // Основная функция анализа
   const startAnalysis = useCallback(async (
     pageUrl: string,
@@ -114,7 +179,9 @@ export const useTextAnalyzer = () => {
     }
 
     setIsLoading(true);
+    setProgress(0);
     setError(null);
+    setResults(null);
 
     try {
       // Подготавливаем данные
@@ -126,29 +193,39 @@ export const useTextAnalyzer = () => {
         settings
       );
 
-      console.log('Отправка данных:', JSON.stringify(requestData, null, 2));
+      console.log('Отправка данных на анализ:', JSON.stringify(requestData, null, 2));
 
-      // === РЕАЛЬНЫЙ API ВЫЗОВ ===
-      // Используем analyzePageWithProgress вместо startAnalysis
-      const response = await analyzerService.analyzePageWithProgress(requestData, (progress) => {
-        console.log('Прогресс анализа:', progress);
+      // === РЕАЛЬНЫЙ API ВЫЗОВ к API_ENDPOINTS.analyzer.start ===
+      const response = await fetch(API_ENDPOINTS.analyzer.start, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth headers if needed
+        },
+        body: JSON.stringify(requestData),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('Ответ сервера от /start:', responseData);
 
       const analysisResult: AnalysisResult = {
         success: true,
-        message: 'Анализ запущен',
-        task_id: 'task_' + Date.now(),
-        data: responseData.results || responseData
+        message: responseData.message || 'Анализ запущен',
+        task_id: responseData.task_id || 'task_' + Date.now(),
+        data: responseData.data || responseData
       };
 
-      console.log('Ответ сервера:', analysisResult);
       setResults(analysisResult);
+      taskIdRef.current = analysisResult.task_id;
+
+      // Запускаем поллинг прогресса
+      startPolling(analysisResult.task_id);
 
       // Уведомление об успехе
-      // toast?.({
-      //   title: "Успех",
-      //   description: `Анализ начат! ID задачи: ${mockResponse.task_id}`,
-      // });
       alert(`Анализ начат! ID задачи: ${analysisResult.task_id}`);
 
       return analysisResult;
@@ -160,19 +237,11 @@ export const useTextAnalyzer = () => {
 
       console.error('Ошибка при отправке:', error);
       setError(errorMessage);
-
-      // toast?.({
-      //   title: "Ошибка",
-      //   description: errorMessage,
-      //   variant: "destructive",
-      // });
       alert(errorMessage);
 
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [startPolling]);
 
   // Функция загрузки файла со стоп-словами
   const loadStopWordsFromFile = useCallback((): Promise<string[]> => {
@@ -232,9 +301,13 @@ export const useTextAnalyzer = () => {
 
   // Функция сброса результатов
   const resetResults = useCallback(() => {
+    stopPolling();
     setResults(null);
     setError(null);
-  }, []);
+    setProgress(0);
+    setIsLoading(false);
+    taskIdRef.current = null;
+  }, [stopPolling]);
 
   // Функция получения статуса задачи (для будущего использования)
   const getTaskStatus = useCallback(async (taskId: string) => {
@@ -254,9 +327,19 @@ export const useTextAnalyzer = () => {
     }
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopPolling();
+    };
+  }, [stopPolling]);
+
   return {
     // Состояния
     isLoading,
+    progress,
     results,
     error,
 
