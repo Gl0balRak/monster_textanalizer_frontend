@@ -103,7 +103,6 @@ const ProjectSettingsPage: React.FC = () => {
       ...acc,
       [key]: newValue
     }), {});
-    // @ts-ignore
     setCleaningParams(updatedParams);
   };
 

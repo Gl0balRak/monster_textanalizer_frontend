@@ -1,8 +1,8 @@
 // client/config/api.config.js
 
 // Используем import.meta.env для Vite вместо process.env
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://127.0.0.1:1001';
-const ANALYZER_API_URL = import.meta.env.VITE_ANALYZER_API_URL || 'http://127.0.0.1:1002';
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:1001';
+const ANALYZER_API_URL = import.meta.env.VITE_ANALYZER_API_URL || 'http://localhost:1002';
 
 export const API_ENDPOINTS = {
   // Auth endpoints (порт 1001)
@@ -18,7 +18,7 @@ export const API_ENDPOINTS = {
   analyzer: {
     base: `${ANALYZER_API_URL}/analyzer`,
     // Основной endpoint для запуска анализа
-    start: `${ANALYZER_API_URL}/analyzer/start`,
+    start: `${ANALYZER_API_URL}/start`,  // <-- ИСПРАВЛЕНО! Без /analyzer
     // Текстовый анализ
     analyzeATags: `${ANALYZER_API_URL}/analyzer/analyze-a-tags`,
     analyzeATagsProgress: `${ANALYZER_API_URL}/analyzer/analyze-a-tags-progress`,
