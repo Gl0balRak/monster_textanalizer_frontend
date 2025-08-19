@@ -96,7 +96,7 @@ export const textAnalyzerApi = {
   },
 
   // Get progress stream (SSE)
-  async getProgressStream(taskId: string): Promise<EventSource> {
+  getProgressStream(taskId: string): EventSource {
     const url = `${API_ENDPOINTS.analyzer.analyzeATagsProgress}?task_id=${taskId}`;
     return new EventSource(url);
   },
