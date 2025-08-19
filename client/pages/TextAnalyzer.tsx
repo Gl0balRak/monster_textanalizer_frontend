@@ -269,7 +269,7 @@ const TextAnalyzerPage: React.FC = () => {
                 onChange={setExcludedWords}
                 buttonText="+ Добавить стоп-слово"
                 placeholder="Стоп-слово"
-                value={excludedWords}
+                initialQueries={excludedWords}
               />
               <Button variant="outline" onClick={handleFileUpload}>
                 Загрузить файл
