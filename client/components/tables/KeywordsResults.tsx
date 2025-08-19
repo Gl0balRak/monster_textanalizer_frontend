@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeywordsComparisonTable } from '@/components/KeywordsComparisonTable';
+import { KeywordsComparisonTable } from '@/components/tables/KeywordsComparisonTable';
 
 interface KeywordData {
   keyword: string;

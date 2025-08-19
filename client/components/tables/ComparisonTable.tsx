@@ -1,7 +1,5 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { ProgressIndicator } from '@/components/ProgressIndicator';
-import { calculateTrimmedMean } from '@/utils/utils';
 
 interface CompetitorResult {
   url: string;
@@ -52,39 +50,23 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
   let targetFragments: number;
   let targetTotal: number;
 
-  if (medianMode) {
-    // Расчет по усеченному среднему
-    targetInA = calculateTrimmedMean(
-      selectedResults.map(r => r.word_count_in_a || 0)
-    );
-    targetOutsideA = calculateTrimmedMean(
-      selectedResults.map(r => r.word_count_outside_a || 0)
-    );
-    targetFragments = calculateTrimmedMean(
-      selectedResults.map(r => r.text_fragments_count || 0)
-    );
-    targetTotal = calculateTrimmedMean(
-      selectedResults.map(r => r.total_visible_words || 0)
-    );
-  } else {
-    // Расчет по обычному среднему
-    targetInA = Math.round(
-      selectedResults.reduce((sum, r) => sum + (r.word_count_in_a || 0), 0) / 
-      selectedResults.length
-    );
-    targetOutsideA = Math.round(
-      selectedResults.reduce((sum, r) => sum + (r.word_count_outside_a || 0), 0) / 
-      selectedResults.length
-    );
-    targetFragments = Math.round(
-      selectedResults.reduce((sum, r) => sum + (r.text_fragments_count || 0), 0) / 
-      selectedResults.length
-    );
-    targetTotal = Math.round(
-      selectedResults.reduce((sum, r) => sum + (r.total_visible_words || 0), 0) / 
-      selectedResults.length
-    );
-  }
+  // Расчет по обычному среднему
+  targetInA = Math.round(
+    selectedResults.reduce((sum, r) => sum + (r.word_count_in_a || 0), 0) /
+    selectedResults.length
+  );
+  targetOutsideA = Math.round(
+    selectedResults.reduce((sum, r) => sum + (r.word_count_outside_a || 0), 0) /
+    selectedResults.length
+  );
+  targetFragments = Math.round(
+    selectedResults.reduce((sum, r) => sum + (r.text_fragments_count || 0), 0) /
+    selectedResults.length
+  );
+  targetTotal = Math.round(
+    selectedResults.reduce((sum, r) => sum + (r.total_visible_words || 0), 0) /
+    selectedResults.length
+  );
 
   const ourInA = mySiteAnalysis.word_count_in_a || 0;
   const ourOutsideA = mySiteAnalysis.word_count_outside_a || 0;
@@ -208,11 +190,6 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                       <div className="text-sm text-gray-600 mb-2 text-center">
                         Слова в теге &lt;a&gt;
                       </div>
-                      <ProgressIndicator
-                        current={ourInA}
-                        target={targetInA}
-                        showDifference={true}
-                      />
                       {medianMode && (
                         <div className="text-xs text-gray-500 mt-1 text-center">
                           (усеч. среднее)
@@ -225,11 +202,6 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                       <div className="text-sm text-gray-600 mb-2 text-center">
                         Слова вне тега &lt;a&gt;
                       </div>
-                      <ProgressIndicator
-                        current={ourOutsideA}
-                        target={targetOutsideA}
-                        showDifference={true}
-                      />
                       {medianMode && (
                         <div className="text-xs text-gray-500 mt-1 text-center">
                           (усеч. среднее)
@@ -242,11 +214,6 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                       <div className="text-sm text-gray-600 mb-2 text-center">
                         Текстовые фрагменты
                       </div>
-                      <ProgressIndicator
-                        current={ourFragments}
-                        target={targetFragments}
-                        showDifference={true}
-                      />
                       {medianMode && (
                         <div className="text-xs text-gray-500 mt-1 text-center">
                           (усеч. среднее)
@@ -259,11 +226,6 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({
                       <div className="text-sm text-gray-600 mb-2 text-center">
                         Общее количество слов
                       </div>
-                      <ProgressIndicator
-                        current={ourTotal}
-                        target={targetTotal}
-                        showDifference={true}
-                      />
                       {medianMode && (
                         <div className="text-xs text-gray-500 mt-1 text-center">
                           (усеч. среднее)

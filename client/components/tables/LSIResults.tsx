@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { LSITable } from '@/components/LSITable';
+import { LSITable } from '@/components/tables/LSITable';
 
 interface LSIItem {
   phrase: string;
