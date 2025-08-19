@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Input, Select, Checkbox } from '@/components/forms';
 import { Button } from '@/components/buttons';
 import { AddQuerySection } from '@/components/ui/AddQuerySection';
+import { ProgressBar } from '@/components/progress_bars/ProgressBar';
+import { ResultsTable } from '@/components/tables/ResultsTable';
 import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
 
 const TextAnalyzerPage: React.FC = () => {
   // Используем наш custom hook
   const {
     isLoading,
+    progress,
     results,
     error,
     startAnalysis,
@@ -25,10 +28,15 @@ const TextAnalyzerPage: React.FC = () => {
   const [excludedWords, setExcludedWords] = useState<string[]>([]);
   const [excludePlatforms, setExcludePlatforms] = useState(false);
   const [parseArchived, setParseArchived] = useState(false);
-  const [searchEngine, setSearchEngine] = useState('');
-  const [region, setRegion] = useState('');
-  const [topSize, setTopSize] = useState('');
+  const [searchEngine, setSearchEngine] = useState('yandex');
+  const [region, setRegion] = useState('msk');
+  const [topSize, setTopSize] = useState('10');
   const [calculateByMedian, setCalculateByMedian] = useState(false);
+
+  // Состояния для таблицы результатов
+  const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
+  const [additionalUrl, setAdditionalUrl] = useState('');
+  const [addingUrl, setAddingUrl] = useState(false);
 
   // Обработчик отправки формы
   const handleGetTop = async () => {
@@ -52,7 +60,6 @@ const TextAnalyzerPage: React.FC = () => {
 
     // Можно добавить дополнительную логику после получения результата
     if (result && result.success) {
-      // Например, очистить форму или перенаправить пользователя
       console.log('Анализ успешно запущен');
     }
   };
@@ -64,6 +71,58 @@ const TextAnalyzerPage: React.FC = () => {
       setExcludedWords(words);
     }
   };
+
+  // Обработчики для таблицы результатов
+  const handleToggleCompetitor = (url: string) => {
+    setSelectedCompetitors(prev => 
+      prev.includes(url) 
+        ? prev.filter(u => u !== url)
+        : [...prev, url]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (!results?.competitors) return;
+    
+    if (selectedCompetitors.length === results.competitors.length) {
+      setSelectedCompetitors([]);
+    } else {
+      setSelectedCompetitors(results.competitors.map(c => c.url));
+    }
+  };
+
+  const handleAddUrl = async () => {
+    if (!additionalUrl.trim()) return;
+    
+    setAddingUrl(true);
+    try {
+      // Here you could implement additional URL analysis
+      // For now, just clear the input
+      setAdditionalUrl('');
+    } catch (error) {
+      console.error('Error adding URL:', error);
+    } finally {
+      setAddingUrl(false);
+    }
+  };
+
+  // Подготовка данных для таблицы
+  const tableResults = results?.competitors?.map(competitor => ({
+    url: competitor.url,
+    word_count_in_a: competitor.parsed_data?.word_count_in_a,
+    word_count_outside_a: competitor.parsed_data?.word_count_outside_a,
+    text_fragments_count: competitor.parsed_data?.text_fragments_count,
+    total_visible_words: competitor.parsed_data?.total_visible_words,
+    parsed_from: competitor.parsed_from,
+    fallback_used: competitor.fallback_used,
+  })) || [];
+
+  const mySiteAnalysis = results?.my_page?.parsed_data ? {
+    word_count_in_a: results.my_page.parsed_data.word_count_in_a,
+    word_count_outside_a: results.my_page.parsed_data.word_count_outside_a,
+    text_fragments_count: results.my_page.parsed_data.text_fragments_count,
+    total_visible_words: results.my_page.parsed_data.total_visible_words,
+  } : null;
 
   return (
     <div className="flex-1 bg-gray-0 p-6">
@@ -79,6 +138,22 @@ const TextAnalyzerPage: React.FC = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
+            </div>
+          )}
+
+          {/* Прогресс бар */}
+          {isLoading && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <ProgressBar
+                progress={progress}
+                label="Прогресс анализа"
+                showPercentage={true}
+                color="blue"
+                className="mb-2"
+              />
+              <p className="text-blue-700 text-sm">
+                Анализ может занять несколько минут...
+              </p>
             </div>
           )}
 
@@ -136,8 +211,8 @@ const TextAnalyzerPage: React.FC = () => {
               value={searchEngine}
               onChange={setSearchEngine}
               options={[
-                { value: 'google', label: 'Google' },
                 { value: 'yandex', label: 'Яндекс' },
+                { value: 'google', label: 'Google' },
               ]}
             />
             <Select
@@ -229,39 +304,40 @@ const TextAnalyzerPage: React.FC = () => {
             )}
           </div>
 
-          {/* Results section */}
+          {/* Results section with summary */}
           {results && !isLoading && (
             <div className="mt-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-bold text-green-900 mb-2">
-                  ✓ {results.message}
+                  ✓ Анализ завершен успешно
                 </h3>
-                <p className="text-green-700">
-                  ID задачи: <code className="bg-green-100 px-2 py-1 rounded">
+                <div className="text-green-700 space-y-1">
+                  <p>ID задачи: <code className="bg-green-100 px-2 py-1 rounded">
                     {results.task_id}
-                  </code>
-                </p>
+                  </code></p>
+                  <p>Анализировано страниц: <strong>{results.summary.total_pages_analyzed}</strong></p>
+                  <p>Найдено конкурентов: <strong>{results.summary.competitors_found}</strong></p>
+                  {results.summary.my_page_analyzed && (
+                    <p>Статус вашей страницы: <strong>
+                      {results.summary.my_page_success ? 'Успешно проанализирована' : 'Ошибка анализа'}
+                    </strong></p>
+                  )}
+                </div>
               </div>
 
-              {results.data && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold mb-2">Детали задачи:</h4>
-                  <dl className="grid grid-cols-2 gap-2 text-sm">
-                    <dt className="text-gray-600">URL:</dt>
-                    <dd className="font-mono">{results.data.url}</dd>
-                    <dt className="text-gray-600">Запрос:</dt>
-                    <dd>{results.data.query}</dd>
-                    <dt className="text-gray-600">Статус:</dt>
-                    <dd className="capitalize">{results.data.status}</dd>
-                    {results.data.estimated_time && (
-                      <>
-                        <dt className="text-gray-600">Время:</dt>
-                        <dd>{results.data.estimated_time}</dd>
-                      </>
-                    )}
-                  </dl>
-                </div>
-              )}
+              {/* Results Table */}
+              <ResultsTable
+                results={tableResults}
+                mySiteAnalysis={mySiteAnalysis}
+                selectedCompetitors={selectedCompetitors}
+                onToggleCompetitor={handleToggleCompetitor}
+                onSelectAll={handleSelectAll}
+                parseSavedCopies={parseArchived}
+                additionalUrl={additionalUrl}
+                setAdditionalUrl={setAdditionalUrl}
+                onAddUrl={handleAddUrl}
+                addingUrl={addingUrl}
+              />
             </div>
           )}
         </div>
