@@ -47,7 +47,7 @@ const TextAnalyzerPage: React.FC = () => {
   const [topSize, setTopSize] = useState('10');
   const [calculateByMedian, setCalculateByMedian] = useState(false);
 
-  // Состояния для таблицы результатов
+  // Состояни�� для таблицы результатов
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
   const [additionalUrl, setAdditionalUrl] = useState('');
   const [addingUrl, setAddingUrl] = useState(false);
@@ -87,7 +87,7 @@ const TextAnalyzerPage: React.FC = () => {
     if (result && result.success) {
       setAdditionalResults([]);
       setSelectedCompetitors([]);
-      console.log('Анализ успешно запущен');
+      console.log('Анализ ��спешно запущен');
     }
   };
 
@@ -234,7 +234,7 @@ const TextAnalyzerPage: React.FC = () => {
         <div className="bg-white rounded-lg p-6 space-y-6">
           {/* Заголовок страницы */}
           <div className="border-b pb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Анализ текста</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Анализ текст��</h1>
             <p className="text-gray-600 mt-1">Проверка страницы и получение ТОП результатов</p>
           </div>
 
@@ -479,15 +479,15 @@ const TextAnalyzerPage: React.FC = () => {
 
           {/* Keywords Progress Bar */}
           {keywordsLoading && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <ProgressBar
                 progress={keywordsProgress}
                 label="Прогресс анализа ключевых слов"
                 showPercentage={true}
-                color="green"
+                color="red"
                 className="mb-2"
               />
-              <p className="text-green-700 text-sm">
+              <p className="text-red-700 text-sm">
                 Анализ ключевых слов может занять несколько минут...
               </p>
             </div>
