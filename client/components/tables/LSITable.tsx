@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ProgressIndicator } from '@/components/ProgressIndicator';
+import { ProgressBar } from '@/components/progress_bars/ProgressBar';
 
 interface LSIItem {
   ngram: string;
