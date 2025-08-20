@@ -144,11 +144,21 @@ export const LSITable: React.FC<LSITableProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <ProgressIndicator
-                        current={item.my_count}
-                        target={Math.round(item.avg_count)}
-                        showDifference={true}
-                      />
+                      <div className="flex items-center space-x-2">
+                        <div className="w-20">
+                          <ProgressBar
+                            progress={item.avg_count > 0 ? Math.min((item.my_count / item.avg_count) * 100, 100) : 0}
+                            showPercentage={false}
+                            color={item.my_count >= item.avg_count ? 'green' : item.my_count === 0 ? 'red' : 'blue'}
+                          />
+                        </div>
+                        <span className={cn(
+                          'text-xs',
+                          item.my_count >= item.avg_count ? 'text-green-600' : 'text-red-600'
+                        )}>
+                          {item.my_count >= item.avg_count ? '+' : ''}{item.my_count - item.avg_count}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
