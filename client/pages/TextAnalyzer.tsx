@@ -170,7 +170,7 @@ const TextAnalyzerPage: React.FC = () => {
   // Обработчик анализа ключевых слов
   const handleKeywordsAnalysis = async () => {
     if (!results?.my_page?.url || selectedCompetitors.length === 0) {
-      alert('Для анализа ключевых слов необходимо выбра��ь конкурентов и иметь анализ собственной страницы');
+      alert('Для анализа ключевых слов необходимо выбрать конкурентов и иметь анализ собственной страницы');
       return;
     }
 
@@ -449,15 +449,15 @@ const TextAnalyzerPage: React.FC = () => {
 
           {/* LSI Progress Bar */}
           {lsiLoading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <ProgressBar
                 progress={lsiProgress}
                 label="Прогресс LSI анализа"
                 showPercentage={true}
-                color="blue"
+                color="red"
                 className="mb-2"
               />
-              <p className="text-blue-700 text-sm">
+              <p className="text-red-700 text-sm">
                 Анализ LSI может занять несколько минут...
               </p>
             </div>
