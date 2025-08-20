@@ -67,6 +67,15 @@ export interface ProgressEvent {
   [key: string]: any;
 }
 
+export interface SinglePageAnalysis {
+  url?: string;
+  word_count_in_a?: number;
+  word_count_outside_a?: number;
+  total_visible_words?: number;
+  text_fragments_count?: number;
+  error?: string;
+}
+
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(endpoint, {
@@ -102,9 +111,9 @@ export const textAnalyzerApi = {
   },
 
   // Analyze single page
-  async analyzeSinglePage(url: string): Promise<any> {
+  async analyzeSinglePage(url: string): Promise<SinglePageAnalysis> {
     const endpoint = `${API_ENDPOINTS.analyzer.analyzeSinglePage}?url=${encodeURIComponent(url)}`;
-    return apiCall(endpoint, {
+    return apiCall<SinglePageAnalysis>(endpoint, {
       method: 'POST',
     });
   },
