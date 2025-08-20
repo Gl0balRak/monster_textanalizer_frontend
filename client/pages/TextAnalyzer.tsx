@@ -5,6 +5,7 @@ import { AddQuerySection } from '@/components/ui/AddQuerySection';
 import { ProgressBar } from '@/components/progress_bars/ProgressBar';
 import { ResultsTable } from '@/components/tables/ResultsTable';
 import { ComparisonTable } from '@/components/tables/ComparisonTable';
+import { LSIResults } from '@/components/tables/LSIResults';
 import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
 
 const TextAnalyzerPage: React.FC = () => {
@@ -14,10 +15,15 @@ const TextAnalyzerPage: React.FC = () => {
     progress,
     results,
     error,
+    lsiLoading,
+    lsiProgress,
+    lsiResults,
+    lsiError,
     startAnalysis,
     loadStopWordsFromFile,
     resetResults,
-    analyzeSinglePage
+    analyzeSinglePage,
+    startLSIAnalysis
   } = useTextAnalyzer();
 
   // Состояния формы
@@ -51,7 +57,7 @@ const TextAnalyzerPage: React.FC = () => {
     fallback_used?: boolean;
   }>>([]);
 
-  // Обработчик отправки формы
+  // Обработчик отправки ��ормы
   const handleGetTop = async () => {
     const result = await startAnalysis(
       pageUrl,
@@ -133,10 +139,26 @@ const TextAnalyzerPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adding URL:', error);
-      alert(`��шибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      alert(`Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
       setAddingUrl(false);
     }
+  };
+
+  // Обработчик LSI анализа
+  const handleGoToLSI = async () => {
+    if (!results?.my_page?.url || selectedCompetitors.length === 0) {
+      alert('Для LSI анализа необходимо выбрать конкурентов и иметь анализ собственной страницы');
+      return;
+    }
+
+    await startLSIAnalysis(
+      selectedCompetitors,
+      results.my_page.url,
+      mainQuery,
+      additionalQueries,
+      calculateByMedian
+    );
   };
 
   // Объединяем результаты из основного анализа и дополнительные
@@ -166,6 +188,22 @@ const TextAnalyzerPage: React.FC = () => {
     total_visible_words: results.my_page.parsed_data.total_visible_words,
   } : null;
 
+  // Преобразуем LSI результаты для компонента LSIResults
+  const formattedLSIResults = useMemo(() => {
+    if (!lsiResults?.ngrams) return null;
+
+    return {
+      bigrams: lsiResults.ngrams.map(item => ({
+        phrase: item.ngram,
+        count: item.avg_count,
+        competitors_count: item.competitors,
+        our_count: item.my_count,
+        difference: item.avg_count - item.my_count,
+        target: item.avg_count,
+      }))
+    };
+  }, [lsiResults]);
+
   return (
     <div className="flex-1 bg-gray-0 p-6">
       <div className="max-w-6xl mx-auto">
@@ -180,6 +218,13 @@ const TextAnalyzerPage: React.FC = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
+            </div>
+          )}
+
+          {/* Показываем LSI ошибку если есть */}
+          {lsiError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <strong>Ошибка LSI анализа:</strong> {lsiError}
             </div>
           )}
 
@@ -233,7 +278,7 @@ const TextAnalyzerPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Select
               label="Поисковая система"
-              placeholder="Выбери��е..."
+              placeholder="Выберите..."
               value={searchEngine}
               onChange={setSearchEngine}
               options={[
@@ -273,7 +318,7 @@ const TextAnalyzerPage: React.FC = () => {
             </h2>
 
             <Checkbox
-              label="Исключать площадки (Avito, Яндекс.Услуги, справочники)"
+              label="Исключать пло��адки (Avito, Яндекс.Услуги, справочники)"
               checked={excludePlatforms}
               onChange={setExcludePlatforms}
             />
@@ -336,7 +381,7 @@ const TextAnalyzerPage: React.FC = () => {
                   className="mb-2"
                 />
                 <p className="text-red-700 text-sm">
-                  Анализ может занять неск��лько минут...
+                  Анализ может занять несколько минут...
                 </p>
               </div>
             )}
@@ -365,12 +410,42 @@ const TextAnalyzerPage: React.FC = () => {
               selectedCompetitors={selectedCompetitors}
               mySiteAnalysis={mySiteAnalysis}
               medianMode={calculateByMedian}
-              onGoToLSI={() => {
-                // TODO: Implement LSI navigation
-                console.log('Navigate to LSI analysis');
+              onGoToLSI={handleGoToLSI}
+              lsiLoading={lsiLoading}
+              lsiProgress={lsiProgress}
+            />
+          )}
+
+          {/* LSI Progress Bar */}
+          {lsiLoading && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <ProgressBar
+                progress={lsiProgress}
+                label="Прогресс LSI анализа"
+                showPercentage={true}
+                color="blue"
+                className="mb-2"
+              />
+              <p className="text-blue-700 text-sm">
+                Анализ LSI может занять несколько минут...
+              </p>
+            </div>
+          )}
+
+          {/* LSI Results */}
+          {formattedLSIResults && !lsiLoading && (
+            <LSIResults
+              lsiResults={formattedLSIResults}
+              selectedCompetitors={selectedCompetitors}
+              mySiteAnalysis={mySiteAnalysis}
+              results={combinedResults}
+              medianMode={calculateByMedian}
+              onKeywordsAnalysis={() => {
+                // TODO: Implement keywords analysis
+                console.log('Start keywords analysis');
               }}
-              lsiLoading={false}
-              lsiProgress={0}
+              keywordsLoading={false}
+              keywordsProgress={0}
             />
           )}
         </div>
