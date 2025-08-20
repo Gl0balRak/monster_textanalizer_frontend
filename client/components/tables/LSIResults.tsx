@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { LSITable } from '@/components/tables/LSITable';
 
-interface LSIItem {
+interface LSIDisplayItem {
   phrase: string;
   count: number;
   competitors_count: number;
@@ -79,7 +79,7 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
         />
       )}
 
-      {/* Униграммы */}
+      {/* Униграмм�� */}
       {lsiResults.unigrams && lsiResults.unigrams.length > 0 && (
         <LSITable
           title="Униграммы (уникальные слова)"
