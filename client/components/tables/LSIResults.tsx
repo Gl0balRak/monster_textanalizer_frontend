@@ -11,10 +11,20 @@ interface LSIDisplayItem {
   target?: number;
 }
 
+// Импортируем LSIItem из LSITable для совместимости
+interface LSITableItem {
+  ngram: string;
+  forms?: string[];
+  competitors: number;
+  avg_count: number;
+  my_count: number;
+  coverage_percent: number;
+}
+
 interface LSIData {
-  unigrams?: LSIDisplayItem[];
-  bigrams?: LSIDisplayItem[];
-  trigrams?: LSIDisplayItem[];
+  unigrams?: LSITableItem[];
+  bigrams?: LSITableItem[];
+  trigrams?: LSITableItem[];
 }
 
 interface CompetitorResult {
@@ -61,7 +71,7 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
         </h2>
         <p className="text-gray-600 mb-6">
           Анализ показывает тематически важные фразы, которые используют конкуренты.
-          Фразы сгруппиров��ны по смыслу, общесайтовый мусор отфильтрован.
+          Фразы сгруппированы по смыслу, общесайтовый мусор отфильтрован.
           {medianMode && (
             <span className="block mt-2 text-sm text-gray-500">
               Используется усеченное среднее для более точного расчета целевых значений.
