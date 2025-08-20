@@ -104,6 +104,31 @@ export interface LSIAnalysisResult {
   error?: string;
 }
 
+export interface KeywordsAnalysisRequest {
+  competitor_urls: string[];
+  my_url: string;
+  main_query: string;
+  additional_queries?: string[];
+  search_engine?: 'yandex' | 'google';
+}
+
+export interface KeywordData {
+  keyword: string;
+  [key: string]: any; // Для динамических полей тегов
+}
+
+export interface TotalWordsData {
+  [key: string]: number;
+}
+
+export interface KeywordsAnalysisResult {
+  table: KeywordData[];
+  total_words: TotalWordsData;
+  search_engine: string;
+  tags_used: string[];
+  error?: string;
+}
+
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(endpoint, {
@@ -149,6 +174,14 @@ export const textAnalyzerApi = {
   // LSI Analysis
   async analyzeLSI(request: LSIAnalysisRequest): Promise<LSIAnalysisResult> {
     return apiCall<LSIAnalysisResult>(API_ENDPOINTS.analyzer.compareNgrams, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  // Keywords Analysis
+  async analyzeKeywords(request: KeywordsAnalysisRequest): Promise<KeywordsAnalysisResult> {
+    return apiCall<KeywordsAnalysisResult>(API_ENDPOINTS.analyzer.keywordsAnalyzeFull, {
       method: 'POST',
       body: JSON.stringify(request),
     });
