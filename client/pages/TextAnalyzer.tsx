@@ -57,7 +57,7 @@ const TextAnalyzerPage: React.FC = () => {
     fallback_used?: boolean;
   }>>([]);
 
-  // Обработчик отправки ��ормы
+  // Обработчик отправки формы
   const handleGetTop = async () => {
     const result = await startAnalysis(
       pageUrl,
@@ -192,15 +192,17 @@ const TextAnalyzerPage: React.FC = () => {
   const formattedLSIResults = useMemo(() => {
     if (!lsiResults?.ngrams) return null;
 
+    // Преобразуем в формат для LSITable (использует другой интерфейс)
+    const lsiTableData = lsiResults.ngrams.map(item => ({
+      ngram: item.ngram,
+      competitors: item.competitors,
+      avg_count: item.avg_count,
+      my_count: item.my_count,
+      coverage_percent: item.coverage_percent,
+    }));
+
     return {
-      bigrams: lsiResults.ngrams.map(item => ({
-        phrase: item.ngram,
-        count: item.avg_count,
-        competitors_count: item.competitors,
-        our_count: item.my_count,
-        difference: item.avg_count - item.my_count,
-        target: item.avg_count,
-      }))
+      bigrams: lsiTableData
     };
   }, [lsiResults]);
 
@@ -318,7 +320,7 @@ const TextAnalyzerPage: React.FC = () => {
             </h2>
 
             <Checkbox
-              label="Исключать пло��адки (Avito, Яндекс.Услуги, справочники)"
+              label="Исключать площадки (Avito, Яндекс.Услуги, справочники)"
               checked={excludePlatforms}
               onChange={setExcludePlatforms}
             />
@@ -335,7 +337,7 @@ const TextAnalyzerPage: React.FC = () => {
 
             <div className="flex items-end gap-4">
               <AddQuerySection
-                label="Не учитывать слова"
+                label="Не учиты��ать слова"
                 maxCount={10}
                 onChange={setExcludedWords}
                 buttonText="+ Добавить стоп-слово"
