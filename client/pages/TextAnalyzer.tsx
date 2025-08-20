@@ -6,6 +6,7 @@ import { ProgressBar } from '@/components/progress_bars/ProgressBar';
 import { ResultsTable } from '@/components/tables/ResultsTable';
 import { ComparisonTable } from '@/components/tables/ComparisonTable';
 import { LSIResults } from '@/components/tables/LSIResults';
+import { KeywordsResults } from '@/components/tables/KeywordsResults';
 import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
 
 const TextAnalyzerPage: React.FC = () => {
@@ -19,11 +20,16 @@ const TextAnalyzerPage: React.FC = () => {
     lsiProgress,
     lsiResults,
     lsiError,
+    keywordsLoading,
+    keywordsProgress,
+    keywordsResults,
+    keywordsError,
     startAnalysis,
     loadStopWordsFromFile,
     resetResults,
     analyzeSinglePage,
-    startLSIAnalysis
+    startLSIAnalysis,
+    startKeywordsAnalysis
   } = useTextAnalyzer();
 
   // Состояния формы
@@ -161,6 +167,22 @@ const TextAnalyzerPage: React.FC = () => {
     );
   };
 
+  // Обработчик анализа ключевых слов
+  const handleKeywordsAnalysis = async () => {
+    if (!results?.my_page?.url || selectedCompetitors.length === 0) {
+      alert('Для анализа ключевых слов необходимо выбра��ь конкурентов и иметь анализ собственной страницы');
+      return;
+    }
+
+    await startKeywordsAnalysis(
+      selectedCompetitors,
+      results.my_page.url,
+      mainQuery,
+      additionalQueries,
+      searchEngine
+    );
+  };
+
   // Объединяем результаты из основного анализа и дополнительные
   const combinedResults = useMemo(() => {
     const mainResults = results?.competitors?.map(competitor => ({
@@ -227,6 +249,13 @@ const TextAnalyzerPage: React.FC = () => {
           {lsiError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               <strong>Ошибка LSI анализа:</strong> {lsiError}
+            </div>
+          )}
+
+          {/* Показываем Keywords ошибку если есть */}
+          {keywordsError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <strong>Ошибка анализа ключевых слов:</strong> {keywordsError}
             </div>
           )}
 
@@ -337,7 +366,7 @@ const TextAnalyzerPage: React.FC = () => {
 
             <div className="flex items-end gap-4">
               <AddQuerySection
-                label="Не учиты��ать слова"
+                label="Не учитывать слова"
                 maxCount={10}
                 onChange={setExcludedWords}
                 buttonText="+ Добавить стоп-слово"
@@ -442,12 +471,38 @@ const TextAnalyzerPage: React.FC = () => {
               mySiteAnalysis={mySiteAnalysis}
               results={combinedResults}
               medianMode={calculateByMedian}
-              onKeywordsAnalysis={() => {
-                // TODO: Implement keywords analysis
-                console.log('Start keywords analysis');
+              onKeywordsAnalysis={handleKeywordsAnalysis}
+              keywordsLoading={keywordsLoading}
+              keywordsProgress={keywordsProgress}
+            />
+          )}
+
+          {/* Keywords Progress Bar */}
+          {keywordsLoading && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <ProgressBar
+                progress={keywordsProgress}
+                label="Прогресс анализа ключевых слов"
+                showPercentage={true}
+                color="green"
+                className="mb-2"
+              />
+              <p className="text-green-700 text-sm">
+                Анализ ключевых слов может занять несколько минут...
+              </p>
+            </div>
+          )}
+
+          {/* Keywords Results */}
+          {keywordsResults && !keywordsLoading && (
+            <KeywordsResults
+              keywordsData={keywordsResults.table}
+              keywordsTotalWords={keywordsResults.total_words}
+              searchEngine={keywordsResults.search_engine}
+              onBack={() => {
+                // Можно добавить логику возврата если нужно
+                console.log('Back to previous step');
               }}
-              keywordsLoading={false}
-              keywordsProgress={0}
             />
           )}
         </div>
