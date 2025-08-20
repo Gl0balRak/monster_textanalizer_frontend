@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis, LSIAnalysisRequest, LSIAnalysisResult } from '@/lib/text-analyzer-api';
+import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis, LSIAnalysisRequest, LSIAnalysisResult, KeywordsAnalysisRequest, KeywordsAnalysisResult } from '@/lib/text-analyzer-api';
 
 interface UseTextAnalyzerReturn {
   // State
@@ -13,6 +13,12 @@ interface UseTextAnalyzerReturn {
   lsiProgress: number;
   lsiResults: LSIAnalysisResult | null;
   lsiError: string | null;
+
+  // Keywords State
+  keywordsLoading: boolean;
+  keywordsProgress: number;
+  keywordsResults: KeywordsAnalysisResult | null;
+  keywordsError: string | null;
 
   // Actions
   startAnalysis: (
@@ -37,6 +43,7 @@ interface UseTextAnalyzerReturn {
   loadStopWordsFromFile: () => Promise<string[]>;
   analyzeSinglePage: (url: string) => Promise<SinglePageAnalysis>;
   startLSIAnalysis: (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], medianMode: boolean) => Promise<void>;
+  startKeywordsAnalysis: (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], searchEngine: string) => Promise<void>;
 }
 
 export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
@@ -52,9 +59,16 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   const [lsiResults, setLsiResults] = useState<LSIAnalysisResult | null>(null);
   const [lsiError, setLsiError] = useState<string | null>(null);
 
+  // Keywords State
+  const [keywordsLoading, setKeywordsLoading] = useState(false);
+  const [keywordsProgress, setKeywordsProgress] = useState(0);
+  const [keywordsResults, setKeywordsResults] = useState<KeywordsAnalysisResult | null>(null);
+  const [keywordsError, setKeywordsError] = useState<string | null>(null);
+
   // Refs
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lsiProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const keywordsProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const mountedRef = useRef(true);
 
@@ -71,6 +85,14 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     if (lsiProgressIntervalRef.current) {
       clearInterval(lsiProgressIntervalRef.current);
       lsiProgressIntervalRef.current = null;
+    }
+  }, []);
+
+  // Stop Keywords progress simulation
+  const stopKeywordsProgressSimulation = useCallback(() => {
+    if (keywordsProgressIntervalRef.current) {
+      clearInterval(keywordsProgressIntervalRef.current);
+      keywordsProgressIntervalRef.current = null;
     }
   }, []);
 
@@ -95,6 +117,21 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
 
     lsiProgressIntervalRef.current = setInterval(() => {
       setLsiProgress(prev => {
+        // Slow progress that reaches about 85% before API response
+        if (prev < 85) {
+          return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
+        }
+        return prev;
+      });
+    }, 1000); // Update every second
+  }, []);
+
+  // Start Keywords progress simulation
+  const startKeywordsProgressSimulation = useCallback(() => {
+    setKeywordsProgress(0);
+
+    keywordsProgressIntervalRef.current = setInterval(() => {
+      setKeywordsProgress(prev => {
         // Slow progress that reaches about 85% before API response
         if (prev < 85) {
           return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
@@ -134,9 +171,30 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
       if (currentProgress >= 100) {
         clearInterval(completeInterval);
         setLsiProgress(100);
+        // Reset progress after completion
+        setTimeout(() => setLsiProgress(0), 1000);
       }
     }, 50); // Very fast completion
   }, [lsiProgress, stopLsiProgressSimulation]);
+
+  // Complete Keywords progress quickly
+  const completeKeywordsProgress = useCallback(() => {
+    stopKeywordsProgressSimulation();
+
+    // Quickly complete to 100%
+    let currentProgress = keywordsProgress;
+    const completeInterval = setInterval(() => {
+      currentProgress += 10;
+      setKeywordsProgress(currentProgress);
+
+      if (currentProgress >= 100) {
+        clearInterval(completeInterval);
+        setKeywordsProgress(100);
+        // Reset progress after completion
+        setTimeout(() => setKeywordsProgress(0), 1000);
+      }
+    }, 50); // Very fast completion
+  }, [keywordsProgress, stopKeywordsProgressSimulation]);
 
   // Setup SSE connection for real progress
   const setupProgressStream = useCallback((taskId: string) => {
@@ -199,11 +257,12 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   const cleanup = useCallback(() => {
     stopProgressSimulation();
     stopLsiProgressSimulation();
+    stopKeywordsProgressSimulation();
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-  }, [stopProgressSimulation, stopLsiProgressSimulation]);
+  }, [stopProgressSimulation, stopLsiProgressSimulation, stopKeywordsProgressSimulation]);
 
   // Start analysis function
   const startAnalysis = useCallback(async (
@@ -294,6 +353,10 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     setLsiError(null);
     setLsiProgress(0);
     setLsiLoading(false);
+    setKeywordsResults(null);
+    setKeywordsError(null);
+    setKeywordsProgress(0);
+    setKeywordsLoading(false);
     cleanup();
   }, [cleanup]);
 
@@ -337,13 +400,15 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
 
       if (result.error) {
         setLsiError(result.error);
+        setLsiLoading(false);
+        stopLsiProgressSimulation();
+        setLsiProgress(0);
       } else {
         // Complete progress and set results
         completeLsiProgress();
         setLsiResults(result);
+        setLsiLoading(false);
       }
-
-      setLsiLoading(false);
 
     } catch (err) {
       if (!mountedRef.current) return;
@@ -355,6 +420,53 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
       setLsiProgress(0);
     }
   }, [startLsiProgressSimulation, completeLsiProgress, stopLsiProgressSimulation]);
+
+  // Start Keywords Analysis
+  const startKeywordsAnalysis = useCallback(async (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], searchEngine: string) => {
+    try {
+      setKeywordsError(null);
+      setKeywordsLoading(true);
+      setKeywordsResults(null);
+
+      // Start Keywords progress simulation
+      startKeywordsProgressSimulation();
+
+      // Prepare Keywords request
+      const request: KeywordsAnalysisRequest = {
+        competitor_urls: selectedUrls,
+        my_url: myUrl,
+        main_query: mainQuery,
+        additional_queries: additionalQueries.filter(q => q.trim()),
+        search_engine: (searchEngine as 'yandex' | 'google') || 'yandex',
+      };
+
+      // Start Keywords analysis
+      const result = await textAnalyzerApi.analyzeKeywords(request);
+
+      if (!mountedRef.current) return;
+
+      if (result.error) {
+        setKeywordsError(result.error);
+        setKeywordsLoading(false);
+        stopKeywordsProgressSimulation();
+        setKeywordsProgress(0);
+      } else {
+        // Complete progress and set results
+        completeKeywordsProgress();
+        setKeywordsResults(result);
+        setKeywordsLoading(false);
+      }
+
+    } catch (err) {
+      if (!mountedRef.current) return;
+
+      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при анализе ключевых слов';
+      setKeywordsError(errorMessage);
+      setKeywordsLoading(false);
+      stopKeywordsProgressSimulation();
+      setKeywordsProgress(0);
+    }
+  }, [startKeywordsProgressSimulation, completeKeywordsProgress, stopKeywordsProgressSimulation]);
 
   // Load stop words from file (mock implementation)
   const loadStopWordsFromFile = useCallback(async (): Promise<string[]> => {
@@ -394,10 +506,15 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     lsiProgress,
     lsiResults,
     lsiError,
+    keywordsLoading,
+    keywordsProgress,
+    keywordsResults,
+    keywordsError,
     startAnalysis,
     resetResults,
     loadStopWordsFromFile,
     analyzeSinglePage,
     startLSIAnalysis,
+    startKeywordsAnalysis,
   };
 };
