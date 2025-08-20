@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent } from '@/lib/text-analyzer-api';
+import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis } from '@/lib/text-analyzer-api';
 
 interface UseTextAnalyzerReturn {
   // State
@@ -29,6 +29,7 @@ interface UseTextAnalyzerReturn {
   
   resetResults: () => void;
   loadStopWordsFromFile: () => Promise<string[]>;
+  analyzeSinglePage: (url: string) => Promise<SinglePageAnalysis>;
 }
 
 export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
@@ -237,6 +238,17 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     cleanup();
   }, [cleanup]);
 
+  // Analyze single page
+  const analyzeSinglePage = useCallback(async (url: string): Promise<SinglePageAnalysis> => {
+    try {
+      const result = await textAnalyzerApi.analyzeSinglePage(url);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка при анализе страницы';
+      throw new Error(errorMessage);
+    }
+  }, []);
+
   // Load stop words from file (mock implementation)
   const loadStopWordsFromFile = useCallback(async (): Promise<string[]> => {
     return new Promise((resolve) => {
@@ -274,5 +286,6 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     startAnalysis,
     resetResults,
     loadStopWordsFromFile,
+    analyzeSinglePage,
   };
 };
