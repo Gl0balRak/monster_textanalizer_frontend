@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis } from '@/lib/text-analyzer-api';
+import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis, LSIAnalysisRequest, LSIAnalysisResult } from '@/lib/text-analyzer-api';
 
 interface UseTextAnalyzerReturn {
   // State
@@ -7,7 +7,13 @@ interface UseTextAnalyzerReturn {
   progress: number;
   results: AnalysisResult | null;
   error: string | null;
-  
+
+  // LSI State
+  lsiLoading: boolean;
+  lsiProgress: number;
+  lsiResults: LSIAnalysisResult | null;
+  lsiError: string | null;
+
   // Actions
   startAnalysis: (
     pageUrl: string,
@@ -26,10 +32,11 @@ interface UseTextAnalyzerReturn {
       calculateByMedian?: boolean;
     }
   ) => Promise<{ success: boolean; message?: string; task_id?: string }>;
-  
+
   resetResults: () => void;
   loadStopWordsFromFile: () => Promise<string[]>;
   analyzeSinglePage: (url: string) => Promise<SinglePageAnalysis>;
+  startLSIAnalysis: (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], medianMode: boolean) => Promise<void>;
 }
 
 export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
@@ -39,8 +46,15 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   const [results, setResults] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // LSI State
+  const [lsiLoading, setLsiLoading] = useState(false);
+  const [lsiProgress, setLsiProgress] = useState(0);
+  const [lsiResults, setLsiResults] = useState<LSIAnalysisResult | null>(null);
+  const [lsiError, setLsiError] = useState<string | null>(null);
+
   // Refs
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lsiProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const mountedRef = useRef(true);
 
@@ -52,12 +66,35 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     }
   }, []);
 
+  // Stop LSI progress simulation
+  const stopLsiProgressSimulation = useCallback(() => {
+    if (lsiProgressIntervalRef.current) {
+      clearInterval(lsiProgressIntervalRef.current);
+      lsiProgressIntervalRef.current = null;
+    }
+  }, []);
+
   // Start progress simulation
   const startProgressSimulation = useCallback(() => {
     setProgress(0);
-    
+
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
+        // Slow progress that reaches about 85% before API response
+        if (prev < 85) {
+          return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
+        }
+        return prev;
+      });
+    }, 1000); // Update every second
+  }, []);
+
+  // Start LSI progress simulation
+  const startLsiProgressSimulation = useCallback(() => {
+    setLsiProgress(0);
+
+    lsiProgressIntervalRef.current = setInterval(() => {
+      setLsiProgress(prev => {
         // Slow progress that reaches about 85% before API response
         if (prev < 85) {
           return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
@@ -70,19 +107,36 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   // Complete progress quickly
   const completeProgress = useCallback(() => {
     stopProgressSimulation();
-    
+
     // Quickly complete to 100%
     let currentProgress = progress;
     const completeInterval = setInterval(() => {
       currentProgress += 10;
       setProgress(currentProgress);
-      
+
       if (currentProgress >= 100) {
         clearInterval(completeInterval);
         setProgress(100);
       }
     }, 50); // Very fast completion
   }, [progress, stopProgressSimulation]);
+
+  // Complete LSI progress quickly
+  const completeLsiProgress = useCallback(() => {
+    stopLsiProgressSimulation();
+
+    // Quickly complete to 100%
+    let currentProgress = lsiProgress;
+    const completeInterval = setInterval(() => {
+      currentProgress += 10;
+      setLsiProgress(currentProgress);
+
+      if (currentProgress >= 100) {
+        clearInterval(completeInterval);
+        setLsiProgress(100);
+      }
+    }, 50); // Very fast completion
+  }, [lsiProgress, stopLsiProgressSimulation]);
 
   // Setup SSE connection for real progress
   const setupProgressStream = useCallback((taskId: string) => {
@@ -144,11 +198,12 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   // Cleanup function
   const cleanup = useCallback(() => {
     stopProgressSimulation();
+    stopLsiProgressSimulation();
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-  }, [stopProgressSimulation]);
+  }, [stopProgressSimulation, stopLsiProgressSimulation]);
 
   // Start analysis function
   const startAnalysis = useCallback(async (
@@ -235,6 +290,10 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     setError(null);
     setProgress(0);
     setIsLoading(false);
+    setLsiResults(null);
+    setLsiError(null);
+    setLsiProgress(0);
+    setLsiLoading(false);
     cleanup();
   }, [cleanup]);
 
@@ -248,6 +307,54 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
       throw new Error(errorMessage);
     }
   }, []);
+
+  // Start LSI Analysis
+  const startLSIAnalysis = useCallback(async (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], medianMode: boolean) => {
+    try {
+      setLsiError(null);
+      setLsiLoading(true);
+      setLsiResults(null);
+
+      // Start LSI progress simulation
+      startLsiProgressSimulation();
+
+      // Prepare LSI request
+      const request: LSIAnalysisRequest = {
+        competitor_urls: selectedUrls,
+        my_url: myUrl,
+        n: 2, // Default to bigrams
+        top_k: 100,
+        exact_phrases: true,
+        median_mode: medianMode,
+        main_query: mainQuery,
+        additional_queries: additionalQueries.filter(q => q.trim()),
+      };
+
+      // Start LSI analysis
+      const result = await textAnalyzerApi.analyzeLSI(request);
+
+      if (!mountedRef.current) return;
+
+      if (result.error) {
+        setLsiError(result.error);
+      } else {
+        // Complete progress and set results
+        completeLsiProgress();
+        setLsiResults(result);
+      }
+
+      setLsiLoading(false);
+
+    } catch (err) {
+      if (!mountedRef.current) return;
+
+      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при LSI анализе';
+      setLsiError(errorMessage);
+      setLsiLoading(false);
+      stopLsiProgressSimulation();
+      setLsiProgress(0);
+    }
+  }, [startLsiProgressSimulation, completeLsiProgress, stopLsiProgressSimulation]);
 
   // Load stop words from file (mock implementation)
   const loadStopWordsFromFile = useCallback(async (): Promise<string[]> => {
@@ -283,9 +390,14 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     progress,
     results,
     error,
+    lsiLoading,
+    lsiProgress,
+    lsiResults,
+    lsiError,
     startAnalysis,
     resetResults,
     loadStopWordsFromFile,
     analyzeSinglePage,
+    startLSIAnalysis,
   };
 };
