@@ -12,9 +12,9 @@ interface LSIDisplayItem {
 }
 
 interface LSIData {
-  unigrams?: LSIItem[];
-  bigrams?: LSIItem[];
-  trigrams?: LSIItem[];
+  unigrams?: LSIDisplayItem[];
+  bigrams?: LSIDisplayItem[];
+  trigrams?: LSIDisplayItem[];
 }
 
 interface CompetitorResult {
@@ -61,7 +61,7 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
         </h2>
         <p className="text-gray-600 mb-6">
           Анализ показывает тематически важные фразы, которые используют конкуренты.
-          Фразы сгруппированы по смыслу, общесайтовый мусор отфильтрован.
+          Фразы сгруппиров��ны по смыслу, общесайтовый мусор отфильтрован.
           {medianMode && (
             <span className="block mt-2 text-sm text-gray-500">
               Используется усеченное среднее для более точного расчета целевых значений.
@@ -79,7 +79,7 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
         />
       )}
 
-      {/* Униграмм�� */}
+      {/* Униграммы */}
       {lsiResults.unigrams && lsiResults.unigrams.length > 0 && (
         <LSITable
           title="Униграммы (уникальные слова)"
