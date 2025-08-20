@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Input, Select, Checkbox } from '@/components/forms';
 import { Button } from '@/components/buttons';
 import { AddQuerySection } from '@/components/ui/AddQuerySection';
 import { ProgressBar } from '@/components/progress_bars/ProgressBar';
 import { ResultsTable } from '@/components/tables/ResultsTable';
+import { ComparisonTable } from '@/components/tables/ComparisonTable';
 import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
 
 const TextAnalyzerPage: React.FC = () => {
@@ -15,7 +16,8 @@ const TextAnalyzerPage: React.FC = () => {
     error,
     startAnalysis,
     loadStopWordsFromFile,
-    resetResults
+    resetResults,
+    analyzeSinglePage
   } = useTextAnalyzer();
 
   // Состояния формы
@@ -37,6 +39,17 @@ const TextAnalyzerPage: React.FC = () => {
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
   const [additionalUrl, setAdditionalUrl] = useState('');
   const [addingUrl, setAddingUrl] = useState(false);
+  
+  // Дополнительные результаты от анализа отдельных страниц
+  const [additionalResults, setAdditionalResults] = useState<Array<{
+    url: string;
+    word_count_in_a?: number;
+    word_count_outside_a?: number;
+    text_fragments_count?: number;
+    total_visible_words?: number;
+    parsed_from?: string;
+    fallback_used?: boolean;
+  }>>([]);
 
   // Обработчик отправки формы
   const handleGetTop = async () => {
@@ -58,8 +71,10 @@ const TextAnalyzerPage: React.FC = () => {
       }
     );
 
-    // Можно добавить дополнительную логику после получения результата
+    // Очищаем дополнительные результаты при новом анализе
     if (result && result.success) {
+      setAdditionalResults([]);
+      setSelectedCompetitors([]);
       console.log('Анализ успешно запущен');
     }
   };
@@ -82,12 +97,12 @@ const TextAnalyzerPage: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (!results?.competitors) return;
+    if (!combinedResults) return;
     
-    if (selectedCompetitors.length === results.competitors.length) {
+    if (selectedCompetitors.length === combinedResults.length) {
       setSelectedCompetitors([]);
     } else {
-      setSelectedCompetitors(results.competitors.map(c => c.url));
+      setSelectedCompetitors(combinedResults.map(c => c.url));
     }
   };
 
@@ -96,26 +111,53 @@ const TextAnalyzerPage: React.FC = () => {
     
     setAddingUrl(true);
     try {
-      // Here you could implement additional URL analysis
-      // For now, just clear the input
-      setAdditionalUrl('');
+      const result = await analyzeSinglePage(additionalUrl);
+      
+      if (result.error) {
+        // Показываем ошибку пользователю
+        alert(`Ошибка: ${result.error}`);
+      } else {
+        // Добавляем результат в дополнительные результаты
+        const newResult = {
+          url: additionalUrl,
+          word_count_in_a: result.word_count_in_a,
+          word_count_outside_a: result.word_count_outside_a,
+          text_fragments_count: result.text_fragments_count,
+          total_visible_words: result.total_visible_words,
+          parsed_from: 'additional',
+          fallback_used: false,
+        };
+        
+        setAdditionalResults(prev => [...prev, newResult]);
+        setAdditionalUrl('');
+      }
     } catch (error) {
       console.error('Error adding URL:', error);
+      alert(`��шибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     } finally {
       setAddingUrl(false);
     }
   };
 
-  // Подготовка данных для таблицы
-  const tableResults = results?.competitors?.map(competitor => ({
-    url: competitor.url,
-    word_count_in_a: competitor.parsed_data?.word_count_in_a,
-    word_count_outside_a: competitor.parsed_data?.word_count_outside_a,
-    text_fragments_count: competitor.parsed_data?.text_fragments_count,
-    total_visible_words: competitor.parsed_data?.total_visible_words,
-    parsed_from: competitor.parsed_from,
-    fallback_used: competitor.fallback_used,
-  })) || [];
+  // Объединяем результаты из основного анализа и дополнительные
+  const combinedResults = useMemo(() => {
+    const mainResults = results?.competitors?.map(competitor => ({
+      url: competitor.url,
+      word_count_in_a: competitor.parsed_data?.word_count_in_a,
+      word_count_outside_a: competitor.parsed_data?.word_count_outside_a,
+      text_fragments_count: competitor.parsed_data?.text_fragments_count,
+      total_visible_words: competitor.parsed_data?.total_visible_words,
+      parsed_from: competitor.parsed_from,
+      fallback_used: competitor.fallback_used,
+    })) || [];
+
+    return [...mainResults, ...additionalResults];
+  }, [results?.competitors, additionalResults]);
+
+  // Подготовка данных для ComparisonTable
+  const selectedResults = combinedResults.filter(result => 
+    selectedCompetitors.includes(result.url)
+  );
 
   const mySiteAnalysis = results?.my_page?.parsed_data ? {
     word_count_in_a: results.my_page.parsed_data.word_count_in_a,
@@ -138,22 +180,6 @@ const TextAnalyzerPage: React.FC = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
-            </div>
-          )}
-
-          {/* Прогресс бар */}
-          {isLoading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <ProgressBar
-                progress={progress}
-                label="Прогресс анализа"
-                showPercentage={true}
-                color="blue"
-                className="mb-2"
-              />
-              <p className="text-blue-700 text-sm">
-                Анализ может занять несколько минут...
-              </p>
             </div>
           )}
 
@@ -207,7 +233,7 @@ const TextAnalyzerPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Select
               label="Поисковая система"
-              placeholder="Выберите..."
+              placeholder="Выбери��е..."
               value={searchEngine}
               onChange={setSearchEngine}
               options={[
@@ -278,67 +304,74 @@ const TextAnalyzerPage: React.FC = () => {
           </div>
 
           {/* Submit Button with loading state */}
-          <div className="flex justify-start items-center gap-4">
-            <Button
-              size="large"
-              disabled={!pageUrl || !mainQuery || isLoading}
-              onClick={handleGetTop}
-            >
-              {isLoading ? 'Обработка...' : 'Получить ТОП'}
-            </Button>
-
-            {isLoading && (
-              <span className="text-gray-600 text-sm animate-pulse">
-                Анализ может занять несколько минут...
-              </span>
-            )}
-
-            {results && (
+          <div className="space-y-4">
+            <div className="flex justify-start items-center gap-4">
               <Button
-                variant="outline"
-                size="medium"
-                onClick={resetResults}
+                size="large"
+                disabled={!pageUrl || !mainQuery || isLoading}
+                onClick={handleGetTop}
               >
-                Очистить результаты
+                {isLoading ? 'Обработка...' : 'Получить ТОП'}
               </Button>
+
+              {results && (
+                <Button
+                  variant="outline"
+                  size="medium"
+                  onClick={resetResults}
+                >
+                  Очистить результаты
+                </Button>
+              )}
+            </div>
+
+            {/* Красный прогресс бар под кнопкой */}
+            {isLoading && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <ProgressBar
+                  progress={progress}
+                  label="Прогресс анализа"
+                  showPercentage={true}
+                  color="red"
+                  className="mb-2"
+                />
+                <p className="text-red-700 text-sm">
+                  Анализ может занять неск��лько минут...
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Results section with summary */}
-          {results && !isLoading && (
-            <div className="mt-6 space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-bold text-green-900 mb-2">
-                  ✓ Анализ завершен успешно
-                </h3>
-                <div className="text-green-700 space-y-1">
-                  <p>ID задачи: <code className="bg-green-100 px-2 py-1 rounded">
-                    {results.task_id}
-                  </code></p>
-                  <p>Анализировано страниц: <strong>{results.summary.total_pages_analyzed}</strong></p>
-                  <p>Найдено конкурентов: <strong>{results.summary.competitors_found}</strong></p>
-                  {results.summary.my_page_analyzed && (
-                    <p>Статус вашей страницы: <strong>
-                      {results.summary.my_page_success ? 'Успешно проанализирована' : 'Ошибка анализа'}
-                    </strong></p>
-                  )}
-                </div>
-              </div>
+          {/* Results Table */}
+          {combinedResults.length > 0 && !isLoading && (
+            <ResultsTable
+              results={combinedResults}
+              mySiteAnalysis={mySiteAnalysis}
+              selectedCompetitors={selectedCompetitors}
+              onToggleCompetitor={handleToggleCompetitor}
+              onSelectAll={handleSelectAll}
+              parseSavedCopies={parseArchived}
+              additionalUrl={additionalUrl}
+              setAdditionalUrl={setAdditionalUrl}
+              onAddUrl={handleAddUrl}
+              addingUrl={addingUrl}
+            />
+          )}
 
-              {/* Results Table */}
-              <ResultsTable
-                results={tableResults}
-                mySiteAnalysis={mySiteAnalysis}
-                selectedCompetitors={selectedCompetitors}
-                onToggleCompetitor={handleToggleCompetitor}
-                onSelectAll={handleSelectAll}
-                parseSavedCopies={parseArchived}
-                additionalUrl={additionalUrl}
-                setAdditionalUrl={setAdditionalUrl}
-                onAddUrl={handleAddUrl}
-                addingUrl={addingUrl}
-              />
-            </div>
+          {/* Comparison Table - показываем только если есть выбранные конкуренты */}
+          {selectedCompetitors.length > 0 && mySiteAnalysis && !isLoading && (
+            <ComparisonTable
+              results={selectedResults}
+              selectedCompetitors={selectedCompetitors}
+              mySiteAnalysis={mySiteAnalysis}
+              medianMode={calculateByMedian}
+              onGoToLSI={() => {
+                // TODO: Implement LSI navigation
+                console.log('Navigate to LSI analysis');
+              }}
+              lsiLoading={false}
+              lsiProgress={0}
+            />
           )}
         </div>
       </div>
