@@ -76,6 +76,34 @@ export interface SinglePageAnalysis {
   error?: string;
 }
 
+export interface LSIAnalysisRequest {
+  competitor_urls: string[];
+  my_url: string;
+  n?: number;
+  top_k?: number;
+  exact_phrases?: boolean;
+  median_mode?: boolean;
+  main_query?: string;
+  additional_queries?: string[];
+}
+
+export interface LSIItem {
+  ngram: string;
+  competitors: number;
+  avg_count: number;
+  my_count: number;
+  coverage_percent: number;
+}
+
+export interface LSIAnalysisResult {
+  ngrams: LSIItem[];
+  total_competitors: number;
+  filtered_count: number;
+  query_words_filtered: number;
+  median_mode: boolean;
+  error?: string;
+}
+
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(endpoint, {
@@ -115,6 +143,14 @@ export const textAnalyzerApi = {
     const endpoint = `${API_ENDPOINTS.analyzer.analyzeSinglePage}?url=${encodeURIComponent(url)}`;
     return apiCall<SinglePageAnalysis>(endpoint, {
       method: 'POST',
+    });
+  },
+
+  // LSI Analysis
+  async analyzeLSI(request: LSIAnalysisRequest): Promise<LSIAnalysisResult> {
+    return apiCall<LSIAnalysisResult>(API_ENDPOINTS.analyzer.compareNgrams, {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   },
 };
