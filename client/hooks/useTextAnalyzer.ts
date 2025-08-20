@@ -1,5 +1,15 @@
-import { useState, useCallback, useRef } from 'react';
-import { textAnalyzerApi, AnalysisRequest, AnalysisResult, ProgressEvent, SinglePageAnalysis, LSIAnalysisRequest, LSIAnalysisResult, KeywordsAnalysisRequest, KeywordsAnalysisResult } from '@/lib/text-analyzer-api';
+import { useState, useCallback, useRef } from "react";
+import {
+  textAnalyzerApi,
+  AnalysisRequest,
+  AnalysisResult,
+  ProgressEvent,
+  SinglePageAnalysis,
+  LSIAnalysisRequest,
+  LSIAnalysisResult,
+  KeywordsAnalysisRequest,
+  KeywordsAnalysisResult,
+} from "@/lib/text-analyzer-api";
 
 interface UseTextAnalyzerReturn {
   // State
@@ -36,14 +46,26 @@ interface UseTextAnalyzerReturn {
       excludePlatforms?: boolean;
       parseArchived?: boolean;
       calculateByMedian?: boolean;
-    }
+    },
   ) => Promise<{ success: boolean; message?: string; task_id?: string }>;
 
   resetResults: () => void;
   loadStopWordsFromFile: () => Promise<string[]>;
   analyzeSinglePage: (url: string) => Promise<SinglePageAnalysis>;
-  startLSIAnalysis: (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], medianMode: boolean) => Promise<void>;
-  startKeywordsAnalysis: (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], searchEngine: string) => Promise<void>;
+  startLSIAnalysis: (
+    selectedUrls: string[],
+    myUrl: string,
+    mainQuery: string,
+    additionalQueries: string[],
+    medianMode: boolean,
+  ) => Promise<void>;
+  startKeywordsAnalysis: (
+    selectedUrls: string[],
+    myUrl: string,
+    mainQuery: string,
+    additionalQueries: string[],
+    searchEngine: string,
+  ) => Promise<void>;
 }
 
 export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
@@ -62,7 +84,8 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   // Keywords State
   const [keywordsLoading, setKeywordsLoading] = useState(false);
   const [keywordsProgress, setKeywordsProgress] = useState(0);
-  const [keywordsResults, setKeywordsResults] = useState<KeywordsAnalysisResult | null>(null);
+  const [keywordsResults, setKeywordsResults] =
+    useState<KeywordsAnalysisResult | null>(null);
   const [keywordsError, setKeywordsError] = useState<string | null>(null);
 
   // Refs
@@ -101,7 +124,7 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     setProgress(0);
 
     progressIntervalRef.current = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         // Slow progress that reaches about 85% before API response
         if (prev < 85) {
           return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
@@ -116,7 +139,7 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     setLsiProgress(0);
 
     lsiProgressIntervalRef.current = setInterval(() => {
-      setLsiProgress(prev => {
+      setLsiProgress((prev) => {
         // Slow progress that reaches about 85% before API response
         if (prev < 85) {
           return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
@@ -131,7 +154,7 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
     setKeywordsProgress(0);
 
     keywordsProgressIntervalRef.current = setInterval(() => {
-      setKeywordsProgress(prev => {
+      setKeywordsProgress((prev) => {
         // Slow progress that reaches about 85% before API response
         if (prev < 85) {
           return prev + Math.random() * 2 + 0.5; // Random increment between 0.5-2.5
@@ -197,61 +220,63 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   }, [keywordsProgress, stopKeywordsProgressSimulation]);
 
   // Setup SSE connection for real progress
-  const setupProgressStream = useCallback((taskId: string) => {
-    try {
-      eventSourceRef.current = textAnalyzerApi.getProgressStream(taskId);
-      
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data: ProgressEvent = JSON.parse(event.data);
-          
-          // Handle different progress event types
-          switch (data.type) {
-            case 'stage_start':
-              console.log(`Starting stage: ${data.stage}`);
-              break;
-              
-            case 'stage_complete':
-              console.log(`Completed stage: ${data.stage}`);
-              break;
-              
-            case 'batch_start':
-            case 'url_start':
-            case 'url_success':
-            case 'url_failed':
-              // Real progress from SSE can override simulation
-              if (data.progress_percent && data.progress_percent > progress) {
-                setProgress(data.progress_percent);
-              }
-              break;
-              
-            case 'parsing_complete':
-            case 'complete':
-              completeProgress();
-              break;
-              
-            case 'error':
-              if (mountedRef.current) {
-                setError(data.message || 'Ошибка при анализе');
-                setIsLoading(false);
-              }
-              break;
+  const setupProgressStream = useCallback(
+    (taskId: string) => {
+      try {
+        eventSourceRef.current = textAnalyzerApi.getProgressStream(taskId);
+
+        eventSourceRef.current.onmessage = (event) => {
+          try {
+            const data: ProgressEvent = JSON.parse(event.data);
+
+            // Handle different progress event types
+            switch (data.type) {
+              case "stage_start":
+                console.log(`Starting stage: ${data.stage}`);
+                break;
+
+              case "stage_complete":
+                console.log(`Completed stage: ${data.stage}`);
+                break;
+
+              case "batch_start":
+              case "url_start":
+              case "url_success":
+              case "url_failed":
+                // Real progress from SSE can override simulation
+                if (data.progress_percent && data.progress_percent > progress) {
+                  setProgress(data.progress_percent);
+                }
+                break;
+
+              case "parsing_complete":
+              case "complete":
+                completeProgress();
+                break;
+
+              case "error":
+                if (mountedRef.current) {
+                  setError(data.message || "Ошибка при анализе");
+                  setIsLoading(false);
+                }
+                break;
+            }
+          } catch (e) {
+            console.error("Error parsing SSE message:", e);
           }
-        } catch (e) {
-          console.error('Error parsing SSE message:', e);
-        }
-      };
+        };
 
-      eventSourceRef.current.onerror = (error) => {
-        console.error('SSE connection error:', error);
-        eventSourceRef.current?.close();
-        eventSourceRef.current = null;
-      };
-
-    } catch (error) {
-      console.error('Error setting up progress stream:', error);
-    }
-  }, [progress, completeProgress]);
+        eventSourceRef.current.onerror = (error) => {
+          console.error("SSE connection error:", error);
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+        };
+      } catch (error) {
+        console.error("Error setting up progress stream:", error);
+      }
+    },
+    [progress, completeProgress],
+  );
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -262,86 +287,99 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-  }, [stopProgressSimulation, stopLsiProgressSimulation, stopKeywordsProgressSimulation]);
+  }, [
+    stopProgressSimulation,
+    stopLsiProgressSimulation,
+    stopKeywordsProgressSimulation,
+  ]);
 
   // Start analysis function
-  const startAnalysis = useCallback(async (
-    pageUrl: string,
-    mainQuery: string,
-    additionalQueries: string[],
-    excludedWords: string[],
-    options: {
-      checkAI?: boolean;
-      checkSpelling?: boolean;
-      checkUniqueness?: boolean;
-      searchEngine?: string;
-      region?: string;
-      topSize?: string;
-      excludePlatforms?: boolean;
-      parseArchived?: boolean;
-      calculateByMedian?: boolean;
-    }
-  ) => {
-    try {
-      setError(null);
-      setIsLoading(true);
-      setResults(null);
-      
-      // Start progress simulation
-      startProgressSimulation();
+  const startAnalysis = useCallback(
+    async (
+      pageUrl: string,
+      mainQuery: string,
+      additionalQueries: string[],
+      excludedWords: string[],
+      options: {
+        checkAI?: boolean;
+        checkSpelling?: boolean;
+        checkUniqueness?: boolean;
+        searchEngine?: string;
+        region?: string;
+        topSize?: string;
+        excludePlatforms?: boolean;
+        parseArchived?: boolean;
+        calculateByMedian?: boolean;
+      },
+    ) => {
+      try {
+        setError(null);
+        setIsLoading(true);
+        setResults(null);
 
-      // Prepare request
-      const request: AnalysisRequest = {
-        page_url: pageUrl || undefined,
-        main_query: mainQuery,
-        additional_queries: additionalQueries.filter(q => q.trim()),
-        excluded_words: excludedWords.filter(w => w.trim()),
-        check_ai: options.checkAI,
-        check_spelling: options.checkSpelling,
-        check_uniqueness: options.checkUniqueness,
-        search_engine: (options.searchEngine as 'yandex' | 'google') || 'yandex',
-        region: options.region || '213',
-        top_size: options.topSize ? parseInt(options.topSize) : 10,
-        parse_saved_copies: options.parseArchived,
-        median_mode: options.calculateByMedian,
-      };
+        // Start progress simulation
+        startProgressSimulation();
 
-      // Start analysis
-      const result = await textAnalyzerApi.startAnalysis(request);
+        // Prepare request
+        const request: AnalysisRequest = {
+          page_url: pageUrl || undefined,
+          main_query: mainQuery,
+          additional_queries: additionalQueries.filter((q) => q.trim()),
+          excluded_words: excludedWords.filter((w) => w.trim()),
+          check_ai: options.checkAI,
+          check_spelling: options.checkSpelling,
+          check_uniqueness: options.checkUniqueness,
+          search_engine:
+            (options.searchEngine as "yandex" | "google") || "yandex",
+          region: options.region || "213",
+          top_size: options.topSize ? parseInt(options.topSize) : 10,
+          parse_saved_copies: options.parseArchived,
+          median_mode: options.calculateByMedian,
+        };
 
-      if (!mountedRef.current) return { success: false };
+        // Start analysis
+        const result = await textAnalyzerApi.startAnalysis(request);
 
-      // Setup progress stream if task_id is available
-      if (result.task_id) {
-        setupProgressStream(result.task_id);
+        if (!mountedRef.current) return { success: false };
+
+        // Setup progress stream if task_id is available
+        if (result.task_id) {
+          setupProgressStream(result.task_id);
+        }
+
+        // Complete progress and set results
+        completeProgress();
+        setResults(result);
+        setIsLoading(false);
+
+        return {
+          success: true,
+          message: "Анализ успешно завершен",
+          task_id: result.task_id,
+        };
+      } catch (err) {
+        if (!mountedRef.current) return { success: false };
+
+        const errorMessage =
+          err instanceof Error ? err.message : "Произошла ошибка при анализе";
+        setError(errorMessage);
+        setIsLoading(false);
+        stopProgressSimulation();
+        setProgress(0);
+
+        return {
+          success: false,
+          message: errorMessage,
+        };
       }
-
-      // Complete progress and set results
-      completeProgress();
-      setResults(result);
-      setIsLoading(false);
-
-      return {
-        success: true,
-        message: 'Анализ успешно завершен',
-        task_id: result.task_id,
-      };
-
-    } catch (err) {
-      if (!mountedRef.current) return { success: false };
-
-      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при анализе';
-      setError(errorMessage);
-      setIsLoading(false);
-      stopProgressSimulation();
-      setProgress(0);
-
-      return {
-        success: false,
-        message: errorMessage,
-      };
-    }
-  }, [startProgressSimulation, setupProgressStream, completeProgress, stopProgressSimulation]);
+    },
+    [
+      startProgressSimulation,
+      setupProgressStream,
+      completeProgress,
+      stopProgressSimulation,
+    ],
+  );
 
   // Reset results
   const resetResults = useCallback(() => {
@@ -361,120 +399,154 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
   }, [cleanup]);
 
   // Analyze single page
-  const analyzeSinglePage = useCallback(async (url: string): Promise<SinglePageAnalysis> => {
-    try {
-      const result = await textAnalyzerApi.analyzeSinglePage(url);
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка при анализе страницы';
-      throw new Error(errorMessage);
-    }
-  }, []);
+  const analyzeSinglePage = useCallback(
+    async (url: string): Promise<SinglePageAnalysis> => {
+      try {
+        const result = await textAnalyzerApi.analyzeSinglePage(url);
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Ошибка при анализе страницы";
+        throw new Error(errorMessage);
+      }
+    },
+    [],
+  );
 
   // Start LSI Analysis
-  const startLSIAnalysis = useCallback(async (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], medianMode: boolean) => {
-    try {
-      setLsiError(null);
-      setLsiLoading(true);
-      setLsiResults(null);
+  const startLSIAnalysis = useCallback(
+    async (
+      selectedUrls: string[],
+      myUrl: string,
+      mainQuery: string,
+      additionalQueries: string[],
+      medianMode: boolean,
+    ) => {
+      try {
+        setLsiError(null);
+        setLsiLoading(true);
+        setLsiResults(null);
 
-      // Start LSI progress simulation
-      startLsiProgressSimulation();
+        // Start LSI progress simulation
+        startLsiProgressSimulation();
 
-      // Prepare LSI request
-      const request: LSIAnalysisRequest = {
-        competitor_urls: selectedUrls,
-        my_url: myUrl,
-        n: 2, // Default to bigrams
-        top_k: 100,
-        exact_phrases: true,
-        median_mode: medianMode,
-        main_query: mainQuery,
-        additional_queries: additionalQueries.filter(q => q.trim()),
-      };
+        // Prepare LSI request
+        const request: LSIAnalysisRequest = {
+          competitor_urls: selectedUrls,
+          my_url: myUrl,
+          n: 2, // Default to bigrams
+          top_k: 100,
+          exact_phrases: true,
+          median_mode: medianMode,
+          main_query: mainQuery,
+          additional_queries: additionalQueries.filter((q) => q.trim()),
+        };
 
-      // Start LSI analysis
-      const result = await textAnalyzerApi.analyzeLSI(request);
+        // Start LSI analysis
+        const result = await textAnalyzerApi.analyzeLSI(request);
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.error) {
-        setLsiError(result.error);
+        if (result.error) {
+          setLsiError(result.error);
+          setLsiLoading(false);
+          stopLsiProgressSimulation();
+          setLsiProgress(0);
+        } else {
+          // Complete progress and set results
+          completeLsiProgress();
+          setLsiResults(result);
+          setLsiLoading(false);
+        }
+      } catch (err) {
+        if (!mountedRef.current) return;
+
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Произошла ошибка при LSI анализе";
+        setLsiError(errorMessage);
         setLsiLoading(false);
         stopLsiProgressSimulation();
         setLsiProgress(0);
-      } else {
-        // Complete progress and set results
-        completeLsiProgress();
-        setLsiResults(result);
-        setLsiLoading(false);
       }
-
-    } catch (err) {
-      if (!mountedRef.current) return;
-
-      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при LSI анализе';
-      setLsiError(errorMessage);
-      setLsiLoading(false);
-      stopLsiProgressSimulation();
-      setLsiProgress(0);
-    }
-  }, [startLsiProgressSimulation, completeLsiProgress, stopLsiProgressSimulation]);
+    },
+    [
+      startLsiProgressSimulation,
+      completeLsiProgress,
+      stopLsiProgressSimulation,
+    ],
+  );
 
   // Start Keywords Analysis
-  const startKeywordsAnalysis = useCallback(async (selectedUrls: string[], myUrl: string, mainQuery: string, additionalQueries: string[], searchEngine: string) => {
-    try {
-      setKeywordsError(null);
-      setKeywordsLoading(true);
-      setKeywordsResults(null);
+  const startKeywordsAnalysis = useCallback(
+    async (
+      selectedUrls: string[],
+      myUrl: string,
+      mainQuery: string,
+      additionalQueries: string[],
+      searchEngine: string,
+    ) => {
+      try {
+        setKeywordsError(null);
+        setKeywordsLoading(true);
+        setKeywordsResults(null);
 
-      // Start Keywords progress simulation
-      startKeywordsProgressSimulation();
+        // Start Keywords progress simulation
+        startKeywordsProgressSimulation();
 
-      // Prepare Keywords request
-      const request: KeywordsAnalysisRequest = {
-        competitor_urls: selectedUrls,
-        my_url: myUrl,
-        main_query: mainQuery,
-        additional_queries: additionalQueries.filter(q => q.trim()),
-        search_engine: (searchEngine as 'yandex' | 'google') || 'yandex',
-      };
+        // Prepare Keywords request
+        const request: KeywordsAnalysisRequest = {
+          competitor_urls: selectedUrls,
+          my_url: myUrl,
+          main_query: mainQuery,
+          additional_queries: additionalQueries.filter((q) => q.trim()),
+          search_engine: (searchEngine as "yandex" | "google") || "yandex",
+        };
 
-      // Start Keywords analysis
-      const result = await textAnalyzerApi.analyzeKeywords(request);
+        // Start Keywords analysis
+        const result = await textAnalyzerApi.analyzeKeywords(request);
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) return;
 
-      if (result.error) {
-        setKeywordsError(result.error);
+        if (result.error) {
+          setKeywordsError(result.error);
+          setKeywordsLoading(false);
+          stopKeywordsProgressSimulation();
+          setKeywordsProgress(0);
+        } else {
+          // Complete progress and set results
+          completeKeywordsProgress();
+          setKeywordsResults(result);
+          setKeywordsLoading(false);
+        }
+      } catch (err) {
+        if (!mountedRef.current) return;
+
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Произошла ошибка при анализе ключевых слов";
+        setKeywordsError(errorMessage);
         setKeywordsLoading(false);
         stopKeywordsProgressSimulation();
         setKeywordsProgress(0);
-      } else {
-        // Complete progress and set results
-        completeKeywordsProgress();
-        setKeywordsResults(result);
-        setKeywordsLoading(false);
       }
-
-    } catch (err) {
-      if (!mountedRef.current) return;
-
-      const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка при анализе ключевых слов';
-      setKeywordsError(errorMessage);
-      setKeywordsLoading(false);
-      stopKeywordsProgressSimulation();
-      setKeywordsProgress(0);
-    }
-  }, [startKeywordsProgressSimulation, completeKeywordsProgress, stopKeywordsProgressSimulation]);
+    },
+    [
+      startKeywordsProgressSimulation,
+      completeKeywordsProgress,
+      stopKeywordsProgressSimulation,
+    ],
+  );
 
   // Load stop words from file (mock implementation)
   const loadStopWordsFromFile = useCallback(async (): Promise<string[]> => {
     return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.txt,.csv';
-      
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".txt,.csv";
+
       input.onchange = (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (file) {
@@ -483,8 +555,8 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
             const text = e.target?.result as string;
             const words = text
               .split(/[\n,\r\t\s]+/)
-              .map(word => word.trim())
-              .filter(word => word.length > 0);
+              .map((word) => word.trim())
+              .filter((word) => word.length > 0);
             resolve(words);
           };
           reader.readAsText(file);
@@ -492,7 +564,7 @@ export const useTextAnalyzer = (): UseTextAnalyzerReturn => {
           resolve([]);
         }
       };
-      
+
       input.click();
     });
   }, []);

@@ -1,6 +1,6 @@
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { LSITable } from '@/components/tables/LSITable';
+import React from "react";
+import { cn } from "@/lib/utils";
+import { LSITable } from "@/components/tables/LSITable";
 
 interface LSIDisplayItem {
   phrase: string;
@@ -55,9 +55,14 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
   medianMode,
   onKeywordsAnalysis,
   keywordsLoading,
-  keywordsProgress
+  keywordsProgress,
 }) => {
-  if (!lsiResults || selectedCompetitors.length === 0 || !mySiteAnalysis || !results) {
+  if (
+    !lsiResults ||
+    selectedCompetitors.length === 0 ||
+    !mySiteAnalysis ||
+    !results
+  ) {
     return null;
   }
 
@@ -70,11 +75,13 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
           Оптимизация слов задающих тематику (LSI)
         </h2>
         <p className="text-gray-600 mb-6">
-          Анализ показывает тематически важные фразы, которые используют конкуренты.
-          Фразы сгруппированы по смыслу, общесайтовый мусор отфильтрован.
+          Анализ показывает тематически важные фразы, которые используют
+          конкуренты. Фразы сгруппированы по смыслу, общесайтовый мусор
+          отфильтрован.
           {medianMode && (
             <span className="block mt-2 text-sm text-gray-500">
-              Используется усеченное среднее для более точного расчета целевых значений.
+              Используется усеченное среднее для более точного расчета целевых
+              значений.
             </span>
           )}
         </p>
@@ -114,10 +121,10 @@ export const LSIResults: React.FC<LSIResultsProps> = ({
           onClick={onKeywordsAnalysis}
           disabled={isLoading}
           className={cn(
-            'inline-flex items-center justify-center gap-2',
-            'px-6 py-3 rounded-md font-medium transition-colors',
-            'bg-red-600 text-white hover:bg-red-700',
-            'disabled:opacity-50 disabled:cursor-not-allowed'
+            "inline-flex items-center justify-center gap-2",
+            "px-6 py-3 rounded-md font-medium transition-colors",
+            "bg-red-600 text-white hover:bg-red-700",
+            "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
         >
           {isLoading ? (

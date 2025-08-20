@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { Input, Select, Checkbox } from '@/components/forms';
-import { Button } from '@/components/buttons';
-import { AddQuerySection } from '@/components/ui/AddQuerySection';
-import { ProgressBar } from '@/components/progress_bars/ProgressBar';
-import { ResultsTable } from '@/components/tables/ResultsTable';
-import { ComparisonTable } from '@/components/tables/ComparisonTable';
-import { LSIResults } from '@/components/tables/LSIResults';
-import { KeywordsResults } from '@/components/tables/KeywordsResults';
-import { useTextAnalyzer } from '@/hooks/useTextAnalyzer';
+import React, { useState, useMemo } from "react";
+import { Input, Select, Checkbox } from "@/components/forms";
+import { Button } from "@/components/buttons";
+import { AddQuerySection } from "@/components/ui/AddQuerySection";
+import { ProgressBar } from "@/components/progress_bars/ProgressBar";
+import { ResultsTable } from "@/components/tables/ResultsTable";
+import { ComparisonTable } from "@/components/tables/ComparisonTable";
+import { LSIResults } from "@/components/tables/LSIResults";
+import { KeywordsResults } from "@/components/tables/KeywordsResults";
+import { useTextAnalyzer } from "@/hooks/useTextAnalyzer";
 
 const TextAnalyzerPage: React.FC = () => {
   // Используем наш custom hook
@@ -29,39 +29,41 @@ const TextAnalyzerPage: React.FC = () => {
     resetResults,
     analyzeSinglePage,
     startLSIAnalysis,
-    startKeywordsAnalysis
+    startKeywordsAnalysis,
   } = useTextAnalyzer();
 
   // Состояния формы
   const [checkAI, setCheckAI] = useState(false);
   const [checkSpelling, setCheckSpelling] = useState(false);
   const [checkUniqueness, setCheckUniqueness] = useState(false);
-  const [pageUrl, setPageUrl] = useState('');
-  const [mainQuery, setMainQuery] = useState('');
+  const [pageUrl, setPageUrl] = useState("");
+  const [mainQuery, setMainQuery] = useState("");
   const [additionalQueries, setAdditionalQueries] = useState<string[]>([]);
   const [excludedWords, setExcludedWords] = useState<string[]>([]);
   const [excludePlatforms, setExcludePlatforms] = useState(false);
   const [parseArchived, setParseArchived] = useState(false);
-  const [searchEngine, setSearchEngine] = useState('yandex');
-  const [region, setRegion] = useState('msk');
-  const [topSize, setTopSize] = useState('10');
+  const [searchEngine, setSearchEngine] = useState("yandex");
+  const [region, setRegion] = useState("msk");
+  const [topSize, setTopSize] = useState("10");
   const [calculateByMedian, setCalculateByMedian] = useState(false);
 
   // Состояни�� для таблицы результатов
   const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>([]);
-  const [additionalUrl, setAdditionalUrl] = useState('');
+  const [additionalUrl, setAdditionalUrl] = useState("");
   const [addingUrl, setAddingUrl] = useState(false);
-  
+
   // Дополнительные результаты от анализа отдельных страниц
-  const [additionalResults, setAdditionalResults] = useState<Array<{
-    url: string;
-    word_count_in_a?: number;
-    word_count_outside_a?: number;
-    text_fragments_count?: number;
-    total_visible_words?: number;
-    parsed_from?: string;
-    fallback_used?: boolean;
-  }>>([]);
+  const [additionalResults, setAdditionalResults] = useState<
+    Array<{
+      url: string;
+      word_count_in_a?: number;
+      word_count_outside_a?: number;
+      text_fragments_count?: number;
+      total_visible_words?: number;
+      parsed_from?: string;
+      fallback_used?: boolean;
+    }>
+  >([]);
 
   // Обработчик отправки формы
   const handleGetTop = async () => {
@@ -80,14 +82,14 @@ const TextAnalyzerPage: React.FC = () => {
         excludePlatforms,
         parseArchived,
         calculateByMedian,
-      }
+      },
     );
 
     // Очищаем дополнительные результаты при новом анализе
     if (result && result.success) {
       setAdditionalResults([]);
       setSelectedCompetitors([]);
-      console.log('Анализ ��спешно запущен');
+      console.log("Анализ ��спешно запущен");
     }
   };
 
@@ -101,30 +103,28 @@ const TextAnalyzerPage: React.FC = () => {
 
   // Обработчики для таблицы результатов
   const handleToggleCompetitor = (url: string) => {
-    setSelectedCompetitors(prev => 
-      prev.includes(url) 
-        ? prev.filter(u => u !== url)
-        : [...prev, url]
+    setSelectedCompetitors((prev) =>
+      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url],
     );
   };
 
   const handleSelectAll = () => {
     if (!combinedResults) return;
-    
+
     if (selectedCompetitors.length === combinedResults.length) {
       setSelectedCompetitors([]);
     } else {
-      setSelectedCompetitors(combinedResults.map(c => c.url));
+      setSelectedCompetitors(combinedResults.map((c) => c.url));
     }
   };
 
   const handleAddUrl = async () => {
     if (!additionalUrl.trim()) return;
-    
+
     setAddingUrl(true);
     try {
       const result = await analyzeSinglePage(additionalUrl);
-      
+
       if (result.error) {
         // Показываем ошибку пользователю
         alert(`Ошибка: ${result.error}`);
@@ -136,16 +136,18 @@ const TextAnalyzerPage: React.FC = () => {
           word_count_outside_a: result.word_count_outside_a,
           text_fragments_count: result.text_fragments_count,
           total_visible_words: result.total_visible_words,
-          parsed_from: 'additional',
+          parsed_from: "additional",
           fallback_used: false,
         };
-        
-        setAdditionalResults(prev => [...prev, newResult]);
-        setAdditionalUrl('');
+
+        setAdditionalResults((prev) => [...prev, newResult]);
+        setAdditionalUrl("");
       }
     } catch (error) {
-      console.error('Error adding URL:', error);
-      alert(`Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+      console.error("Error adding URL:", error);
+      alert(
+        `Ошибка: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`,
+      );
     } finally {
       setAddingUrl(false);
     }
@@ -154,7 +156,9 @@ const TextAnalyzerPage: React.FC = () => {
   // Обработчик LSI анализа
   const handleGoToLSI = async () => {
     if (!results?.my_page?.url || selectedCompetitors.length === 0) {
-      alert('Для LSI анализа необходимо выбрать конкурентов и иметь анализ собственной страницы');
+      alert(
+        "Для LSI анализа необходимо выбрать конкурентов и иметь анализ собственной страницы",
+      );
       return;
     }
 
@@ -163,14 +167,16 @@ const TextAnalyzerPage: React.FC = () => {
       results.my_page.url,
       mainQuery,
       additionalQueries,
-      calculateByMedian
+      calculateByMedian,
     );
   };
 
   // Обработчик анализа ключевых слов
   const handleKeywordsAnalysis = async () => {
     if (!results?.my_page?.url || selectedCompetitors.length === 0) {
-      alert('Для анализа ключевых слов необходимо выбрать конкурентов и иметь анализ собственной страницы');
+      alert(
+        "Для анализа ключевых слов необходимо выбрать конкурентов и иметь анализ собственной страницы",
+      );
       return;
     }
 
@@ -179,43 +185,46 @@ const TextAnalyzerPage: React.FC = () => {
       results.my_page.url,
       mainQuery,
       additionalQueries,
-      searchEngine
+      searchEngine,
     );
   };
 
   // Объединяем результаты из основного анализа и дополнительные
   const combinedResults = useMemo(() => {
-    const mainResults = results?.competitors?.map(competitor => ({
-      url: competitor.url,
-      word_count_in_a: competitor.parsed_data?.word_count_in_a,
-      word_count_outside_a: competitor.parsed_data?.word_count_outside_a,
-      text_fragments_count: competitor.parsed_data?.text_fragments_count,
-      total_visible_words: competitor.parsed_data?.total_visible_words,
-      parsed_from: competitor.parsed_from,
-      fallback_used: competitor.fallback_used,
-    })) || [];
+    const mainResults =
+      results?.competitors?.map((competitor) => ({
+        url: competitor.url,
+        word_count_in_a: competitor.parsed_data?.word_count_in_a,
+        word_count_outside_a: competitor.parsed_data?.word_count_outside_a,
+        text_fragments_count: competitor.parsed_data?.text_fragments_count,
+        total_visible_words: competitor.parsed_data?.total_visible_words,
+        parsed_from: competitor.parsed_from,
+        fallback_used: competitor.fallback_used,
+      })) || [];
 
     return [...mainResults, ...additionalResults];
   }, [results?.competitors, additionalResults]);
 
   // Подготовка данных для ComparisonTable
-  const selectedResults = combinedResults.filter(result => 
-    selectedCompetitors.includes(result.url)
+  const selectedResults = combinedResults.filter((result) =>
+    selectedCompetitors.includes(result.url),
   );
 
-  const mySiteAnalysis = results?.my_page?.parsed_data ? {
-    word_count_in_a: results.my_page.parsed_data.word_count_in_a,
-    word_count_outside_a: results.my_page.parsed_data.word_count_outside_a,
-    text_fragments_count: results.my_page.parsed_data.text_fragments_count,
-    total_visible_words: results.my_page.parsed_data.total_visible_words,
-  } : null;
+  const mySiteAnalysis = results?.my_page?.parsed_data
+    ? {
+        word_count_in_a: results.my_page.parsed_data.word_count_in_a,
+        word_count_outside_a: results.my_page.parsed_data.word_count_outside_a,
+        text_fragments_count: results.my_page.parsed_data.text_fragments_count,
+        total_visible_words: results.my_page.parsed_data.total_visible_words,
+      }
+    : null;
 
   // Преобразуем LSI результаты для компонента LSIResults
   const formattedLSIResults = useMemo(() => {
     if (!lsiResults?.ngrams) return null;
 
     // Преобразуем в формат для LSITable (использует другой интерфейс)
-    const lsiTableData = lsiResults.ngrams.map(item => ({
+    const lsiTableData = lsiResults.ngrams.map((item) => ({
       ngram: item.ngram,
       competitors: item.competitors,
       avg_count: item.avg_count,
@@ -224,7 +233,7 @@ const TextAnalyzerPage: React.FC = () => {
     }));
 
     return {
-      bigrams: lsiTableData
+      bigrams: lsiTableData,
     };
   }, [lsiResults]);
 
@@ -235,7 +244,9 @@ const TextAnalyzerPage: React.FC = () => {
           {/* Заголовок страницы */}
           <div className="border-b pb-4">
             <h1 className="text-2xl font-bold text-gray-900">Анализ текст��</h1>
-            <p className="text-gray-600 mt-1">Проверка страницы и получение ТОП результатов</p>
+            <p className="text-gray-600 mt-1">
+              Проверка страницы и получение ТОП результатов
+            </p>
           </div>
 
           {/* Показываем ошибку если есть */}
@@ -313,8 +324,8 @@ const TextAnalyzerPage: React.FC = () => {
               value={searchEngine}
               onChange={setSearchEngine}
               options={[
-                { value: 'yandex', label: 'Яндекс' },
-                { value: 'google', label: 'Google' },
+                { value: "yandex", label: "Яндекс" },
+                { value: "google", label: "Google" },
               ]}
             />
             <Select
@@ -323,9 +334,9 @@ const TextAnalyzerPage: React.FC = () => {
               value={region}
               onChange={setRegion}
               options={[
-                { value: 'msk', label: 'Москва' },
-                { value: 'spb', label: 'Санкт-Петербург' },
-                { value: 'ekb', label: 'Екатеринбург' },
+                { value: "msk", label: "Москва" },
+                { value: "spb", label: "Санкт-Петербург" },
+                { value: "ekb", label: "Екатеринбург" },
               ]}
               allowCustomValue={true}
             />
@@ -335,9 +346,9 @@ const TextAnalyzerPage: React.FC = () => {
               value={topSize}
               onChange={setTopSize}
               options={[
-                { value: '10', label: 'ТОП-10' },
-                { value: '20', label: 'ТОП-20' },
-                { value: '50', label: 'ТОП-50' },
+                { value: "10", label: "ТОП-10" },
+                { value: "20", label: "ТОП-20" },
+                { value: "50", label: "ТОП-50" },
               ]}
             />
           </div>
@@ -387,15 +398,11 @@ const TextAnalyzerPage: React.FC = () => {
                 disabled={!pageUrl || !mainQuery || isLoading}
                 onClick={handleGetTop}
               >
-                {isLoading ? 'Обработка...' : 'Получить ТОП'}
+                {isLoading ? "Обработка..." : "Получить ТОП"}
               </Button>
 
               {results && (
-                <Button
-                  variant="outline"
-                  size="medium"
-                  onClick={resetResults}
-                >
+                <Button variant="outline" size="medium" onClick={resetResults}>
                   Очистить результаты
                 </Button>
               )}
@@ -501,7 +508,7 @@ const TextAnalyzerPage: React.FC = () => {
               searchEngine={keywordsResults.search_engine}
               onBack={() => {
                 // Можно добавить логику возврата если нужно
-                console.log('Back to previous step');
+                console.log("Back to previous step");
               }}
             />
           )}

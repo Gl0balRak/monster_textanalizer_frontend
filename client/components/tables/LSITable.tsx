@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ProgressBar } from '@/components/progress_bars/ProgressBar';
+import React, { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ProgressBar } from "@/components/progress_bars/ProgressBar";
 
 interface LSIItem {
   ngram: string;
@@ -19,22 +19,23 @@ interface LSITableProps {
   defaultExpanded?: boolean;
 }
 
-type PerPageOption = number | 'all';
+type PerPageOption = number | "all";
 
 export const LSITable: React.FC<LSITableProps> = ({
   title,
   data,
   itemsPerPage = 15,
-  defaultExpanded = true
+  defaultExpanded = true,
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [perPage, setPerPage] = useState<PerPageOption>(itemsPerPage);
   const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
 
-  const totalPages = perPage === 'all' ? 1 : Math.ceil(data.length / perPage);
-  const currentData = perPage === 'all'
-    ? data
-    : data.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const totalPages = perPage === "all" ? 1 : Math.ceil(data.length / perPage);
+  const currentData =
+    perPage === "all"
+      ? data
+      : data.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const getPageNumbers = (): (number | string)[] => {
     const pages: (number | string)[] = [];
@@ -44,43 +45,65 @@ export const LSITable: React.FC<LSITableProps> = ({
       }
     } else {
       if (currentPage <= 4) {
-        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
       } else if (currentPage >= totalPages - 3) {
-        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+        pages.push(
+          1,
+          "...",
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages,
+        );
       } else {
-        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+        pages.push(
+          1,
+          "...",
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          "...",
+          totalPages,
+        );
       }
     }
     return pages;
   };
 
-  const avgCoverage = data.length > 0
-    ? Math.round(data.reduce((sum, item) => sum + item.coverage_percent, 0) / data.length)
-    : 0;
+  const avgCoverage =
+    data.length > 0
+      ? Math.round(
+          data.reduce((sum, item) => sum + item.coverage_percent, 0) /
+            data.length,
+        )
+      : 0;
 
   // Процент выполнения (сколько у нас есть относительно нужного)
-  const avgCompletion = data.length > 0
-    ? Math.round(
-        data.reduce((sum, item) => {
-          const completion = item.avg_count > 0
-            ? Math.min((item.my_count / item.avg_count) * 100, 100)
-            : 0;
-          return sum + completion;
-        }, 0) / data.length
-      )
-    : 0;
+  const avgCompletion =
+    data.length > 0
+      ? Math.round(
+          data.reduce((sum, item) => {
+            const completion =
+              item.avg_count > 0
+                ? Math.min((item.my_count / item.avg_count) * 100, 100)
+                : 0;
+            return sum + completion;
+          }, 0) / data.length,
+        )
+      : 0;
 
   // Процент недостающих слов
   const avgDeficit = 100 - avgCompletion;
 
   const handlePerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setPerPage(value === 'all' ? 'all' : parseInt(value));
+    setPerPage(value === "all" ? "all" : parseInt(value));
     setCurrentPage(1);
   };
 
   const handlePageClick = (page: number | string) => {
-    if (typeof page === 'number') {
+    if (typeof page === "number") {
       setCurrentPage(page);
     }
   };
@@ -93,7 +116,7 @@ export const LSITable: React.FC<LSITableProps> = ({
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-gray-600 hover:text-gray-900 transition-colors"
-              aria-label={isExpanded ? 'Свернуть' : 'Развернуть'}
+              aria-label={isExpanded ? "Свернуть" : "Развернуть"}
             >
               {isExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
             </button>
@@ -112,34 +135,52 @@ export const LSITable: React.FC<LSITableProps> = ({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-800 text-white">
-                  <th className="text-left py-3 px-4 font-medium text-sm">Слово</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm">У конкурентов</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm">
+                    Слово
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-sm">
+                    У конкурентов
+                  </th>
                   <th className="text-left py-3 px-4 font-medium text-sm">
                     Встречается на странице (усеченное среднее)
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-sm">У вас</th>
-                  <th className="text-left py-3 px-4 font-medium text-sm">У вас / Нужно</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm">
+                    У вас
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-sm">
+                    У вас / Нужно
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {currentData.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
+                  <tr
+                    key={index}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{item.ngram}</div>
+                      <div className="font-medium text-gray-900">
+                        {item.ngram}
+                      </div>
                       {item.forms && item.forms.length > 0 && (
                         <div className="text-xs text-gray-500 mt-1">
-                          Формы: {item.forms.slice(0, 3).join(', ')}
-                          {item.forms.length > 3 && ` +${item.forms.length - 3}`}
+                          Формы: {item.forms.slice(0, 3).join(", ")}
+                          {item.forms.length > 3 &&
+                            ` +${item.forms.length - 3}`}
                         </div>
                       )}
                     </td>
                     <td className="py-3 px-4 text-sm">{item.competitors}</td>
                     <td className="py-3 px-4 text-sm">{item.avg_count}</td>
                     <td className="py-3 px-4">
-                      <span className={cn(
-                        'font-medium',
-                        item.my_count === 0 ? 'text-red-600' : 'text-blue-600'
-                      )}>
+                      <span
+                        className={cn(
+                          "font-medium",
+                          item.my_count === 0
+                            ? "text-red-600"
+                            : "text-blue-600",
+                        )}
+                      >
                         {item.my_count}
                       </span>
                     </td>
@@ -147,16 +188,34 @@ export const LSITable: React.FC<LSITableProps> = ({
                       <div className="flex items-center space-x-2">
                         <div className="w-20">
                           <ProgressBar
-                            progress={item.avg_count > 0 ? Math.min((item.my_count / item.avg_count) * 100, 100) : 0}
+                            progress={
+                              item.avg_count > 0
+                                ? Math.min(
+                                    (item.my_count / item.avg_count) * 100,
+                                    100,
+                                  )
+                                : 0
+                            }
                             showPercentage={false}
-                            color={item.my_count >= item.avg_count ? 'green' : item.my_count === 0 ? 'red' : 'blue'}
+                            color={
+                              item.my_count >= item.avg_count
+                                ? "green"
+                                : item.my_count === 0
+                                  ? "red"
+                                  : "blue"
+                            }
                           />
                         </div>
-                        <span className={cn(
-                          'text-xs',
-                          item.my_count >= item.avg_count ? 'text-green-600' : 'text-red-600'
-                        )}>
-                          {item.my_count >= item.avg_count ? '+' : ''}{item.my_count - item.avg_count}
+                        <span
+                          className={cn(
+                            "text-xs",
+                            item.my_count >= item.avg_count
+                              ? "text-green-600"
+                              : "text-red-600",
+                          )}
+                        >
+                          {item.my_count >= item.avg_count ? "+" : ""}
+                          {item.my_count - item.avg_count}
                         </span>
                       </div>
                     </td>
@@ -169,7 +228,9 @@ export const LSITable: React.FC<LSITableProps> = ({
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-700">Строк на странице:</span>
+                <span className="text-sm text-gray-700">
+                  Строк на странице:
+                </span>
                 <select
                   value={perPage}
                   onChange={handlePerPageChange}
@@ -182,21 +243,20 @@ export const LSITable: React.FC<LSITableProps> = ({
                   <option value="all">Все</option>
                 </select>
                 <span className="text-sm text-gray-500 ml-4">
-                  {perPage === 'all'
+                  {perPage === "all"
                     ? `Показано все ${data.length} n-грамм`
-                    : `Показано ${currentData.length} из ${data.length} n-грамм`
-                  }
+                    : `Показано ${currentData.length} из ${data.length} n-грамм`}
                 </span>
               </div>
 
-              {perPage !== 'all' && totalPages > 1 && (
+              {perPage !== "all" && totalPages > 1 && (
                 <div className="flex items-center space-x-1">
                   <button
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
                     className={cn(
-                      'px-2 py-1 text-gray-500 hover:text-gray-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      "px-2 py-1 text-gray-500 hover:text-gray-700",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
                     aria-label="Первая страница"
                   >
@@ -206,39 +266,41 @@ export const LSITable: React.FC<LSITableProps> = ({
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
                     className={cn(
-                      'px-2 py-1 text-gray-500 hover:text-gray-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      "px-2 py-1 text-gray-500 hover:text-gray-700",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
                     aria-label="Предыдущая страница"
                   >
                     ‹
                   </button>
 
-                  {getPageNumbers().map((page, index) => (
-                    page === '...' ? (
-                      <span key={index} className="px-2 py-1 text-gray-500">...</span>
+                  {getPageNumbers().map((page, index) =>
+                    page === "..." ? (
+                      <span key={index} className="px-2 py-1 text-gray-500">
+                        ...
+                      </span>
                     ) : (
                       <button
                         key={index}
                         onClick={() => handlePageClick(page)}
                         className={cn(
-                          'px-3 py-1 rounded transition-colors',
+                          "px-3 py-1 rounded transition-colors",
                           currentPage === page
-                            ? 'bg-red-600 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? "bg-red-600 text-white"
+                            : "text-gray-700 hover:bg-gray-100",
                         )}
                       >
                         {page}
                       </button>
-                    )
-                  ))}
+                    ),
+                  )}
 
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className={cn(
-                      'px-2 py-1 text-gray-500 hover:text-gray-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      "px-2 py-1 text-gray-500 hover:text-gray-700",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
                     aria-label="Следующая страница"
                   >
@@ -248,8 +310,8 @@ export const LSITable: React.FC<LSITableProps> = ({
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
                     className={cn(
-                      'px-2 py-1 text-gray-500 hover:text-gray-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      "px-2 py-1 text-gray-500 hover:text-gray-700",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
                     aria-label="Последняя страница"
                   >

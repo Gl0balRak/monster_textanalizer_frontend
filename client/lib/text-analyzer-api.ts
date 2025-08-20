@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from '@/config/api.config.js';
+import { API_ENDPOINTS } from "@/config/api.config.js";
 
 // Types based on the backend schemas
 export interface AnalysisRequest {
@@ -9,7 +9,7 @@ export interface AnalysisRequest {
   main_query: string;
   additional_queries?: string[];
   parse_saved_copies?: boolean;
-  search_engine?: 'yandex' | 'google';
+  search_engine?: "yandex" | "google";
   region?: string;
   top_size?: number;
   excluded_words?: string[];
@@ -28,7 +28,7 @@ export interface CompetitorResult {
     total_visible_words?: number;
   };
   status: string;
-  parsed_from?: 'saved_copy' | 'original' | string;
+  parsed_from?: "saved_copy" | "original" | string;
   fallback_used?: boolean;
 }
 
@@ -109,7 +109,7 @@ export interface KeywordsAnalysisRequest {
   my_url: string;
   main_query: string;
   additional_queries?: string[];
-  search_engine?: 'yandex' | 'google';
+  search_engine?: "yandex" | "google";
 }
 
 export interface KeywordData {
@@ -134,14 +134,16 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(endpoint, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `API Error: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
 
   return response.json();
@@ -152,7 +154,7 @@ export const textAnalyzerApi = {
   // Start analysis
   async startAnalysis(request: AnalysisRequest): Promise<AnalysisResult> {
     return apiCall<AnalysisResult>(API_ENDPOINTS.analyzer.analyzeATags, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(request),
     });
   },
@@ -167,23 +169,28 @@ export const textAnalyzerApi = {
   async analyzeSinglePage(url: string): Promise<SinglePageAnalysis> {
     const endpoint = `${API_ENDPOINTS.analyzer.analyzeSinglePage}?url=${encodeURIComponent(url)}`;
     return apiCall<SinglePageAnalysis>(endpoint, {
-      method: 'POST',
+      method: "POST",
     });
   },
 
   // LSI Analysis
   async analyzeLSI(request: LSIAnalysisRequest): Promise<LSIAnalysisResult> {
     return apiCall<LSIAnalysisResult>(API_ENDPOINTS.analyzer.compareNgrams, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(request),
     });
   },
 
   // Keywords Analysis
-  async analyzeKeywords(request: KeywordsAnalysisRequest): Promise<KeywordsAnalysisResult> {
-    return apiCall<KeywordsAnalysisResult>(API_ENDPOINTS.analyzer.keywordsAnalyzeFull, {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+  async analyzeKeywords(
+    request: KeywordsAnalysisRequest,
+  ): Promise<KeywordsAnalysisResult> {
+    return apiCall<KeywordsAnalysisResult>(
+      API_ENDPOINTS.analyzer.keywordsAnalyzeFull,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      },
+    );
   },
 };
