@@ -2,7 +2,7 @@
 
 // Используем import.meta.env для Vite вместо process.env
 const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:1001';
-const ANALYZER_API_URL = import.meta.env.VITE_ANALYZER_API_URL || 'http://localhost:1002';
+const ANALYZER_API_URL = 'http://localhost:1001';
 
 export const API_ENDPOINTS = {
   // Auth endpoints (порт 1001)
